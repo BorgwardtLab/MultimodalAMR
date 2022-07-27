@@ -3,6 +3,8 @@ Development repository for the DRIAMS Antimicrobial Resistance prediction task.
 
 Since this is a working repository, let us keep the experiments in separate folders as much as possible.
 
+I included some data in the processed_data folder, but please avoid large files.
+
 
 ## Task List
 - Comparison to baselines (Logistic Regression, RF, MLP, others?) on the classification task restricted to a single species and drug. (see DataSplitter _baseline_selection_ method)
