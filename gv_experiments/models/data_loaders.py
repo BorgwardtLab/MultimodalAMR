@@ -41,9 +41,7 @@ class DrugResistanceDataset(Dataset):
 
         :long_table: DataFrame from processed csv file with the quadruplets for each hospital
         :spectra_matrix: matrix of 6000-dimensional MALDI-TOF spectra
-        :drug_fingerprints: DataFrame of chemical fingerprints
-        :phylogen_matrix: ?
-        :fingerprint_class: which chemical fingerprint to use. Choice of 'MACCS', 'morgan', or 'pubchem'
+        :drugs_embeddings: DataFrame of embeddings derived from the ChEMBL VAE from morgan fingerprints
         """
         self.long_table = long_table_df
         self.spectra_tensor = torch.tensor(spectra_matrix).float()

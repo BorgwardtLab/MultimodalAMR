@@ -57,11 +57,11 @@ class DataSplitter():
         return self.long_table[ix].reset_index(drop=True), self.long_table[~ix].reset_index(drop=True)
     
     def baseline_train_test_split(self, df, test_size=0.2, random_state=42):
-        train_X, test_X = train_test_split(df, stratify=df["response"], random_state=random_state)
+        train_X, test_X = train_test_split(df, stratify=df["response"], test_size=test_size, random_state=random_state)
         return train_X, test_X
     
     def baseline_kfold_cv(self, df, cv=5):
-        skf = StratifiedKFold(n_splits=2)
+        skf = StratifiedKFold(n_splits=cv)
         folds = []
         for train_index, test_index in skf.split(df, df["response"]):
             folds.append((df.iloc[train_index], df.iloc[test_index]))

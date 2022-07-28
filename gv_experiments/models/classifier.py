@@ -1,69 +1,15 @@
 import torch
 import torch.nn as nn
+from modules import MLP_Block
 
 
 
-class MLP_Block(nn.Module):
-    """Embedding block for the chemical information."""
-
-    def __init__(self, embedder_layers_sizes, dropout=0.1):
-        super().__init__()
-
-        # Fully-connected layers + ReLU
-        embedder_layers = []
-        for k in range(len(embedder_layers_sizes) - 1):
-            embedder_layers.append(
-                nn.Linear(embedder_layers_sizes[k], embedder_layers_sizes[k + 1])
-            )
-            # if k<len(embedder_layers_sizes) - 2:
-            embedder_layers.extend([nn.ReLU(), nn.Dropout(dropout)])
-
-        self.embedder = nn.Sequential(*embedder_layers)
-
-    def forward(self, x):
-        return self.embedder(x)
-
-
-class SpectrumEmbedding(nn.Module):
-    """CNN-based embedding block for the Maldi-tof spectra."""
-
-    def __init__(self,
-                #  in_dim=1,
-                 kernel_sizes=[5, 7, 11, 13],
-                 num_kernels=[32, 16, 8, 8]):
-        super().__init__()
-
-        # Convolutional layers + ReLU + Dropout + MaxPool
-        spectrum_embedder_layers = []
-        num_kernels = [1] + num_kernels
-        for i in range(len(num_kernels)-1):
-            spectrum_embedder_layers.append(nn.Conv1d(in_channels=num_kernels[i],
-                                                      out_channels=num_kernels[i+1],
-                                                      kernel_size=kernel_sizes[i],
-                                                      stride=3))
-            spectrum_embedder_layers.extend(
-                [nn.BatchNorm1d(num_kernels[i+1]), nn.ReLU()])
-
-        self.spectrum_embedder = nn.Sequential(*spectrum_embedder_layers)
-
-        self.out_layer = nn.Sequential(nn.Flatten(), nn.Linear(552, 64))
-
-    def forward(self, x):
-        # `x` must have input shape matching the requirement of `nn.Conv1d`: (N, C_in, L_in)
-        cnn_out = self.spectrum_embedder(x)
-
-        return self.out_layer(cnn_out)
-
-
-
-class SharedEmbeddingClassifier(nn.Module):
+class AMR_Classifier(nn.Module):
     """Overall model definition."""
 
     def __init__(self, config):
         super().__init__()
         self.config = config
-
-        # self.drug_emb = MLP_Block(drug_embedder_layers_sizes)
 
         # Species embedding
         self.species_emd = nn.Embedding(

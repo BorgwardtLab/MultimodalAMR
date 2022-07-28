@@ -5,19 +5,8 @@ import pandas as pd
 import os
 import numpy as np
 from torch.autograd import Variable
+from modules import ResBlock
 
-class ResBlock(nn.Module):
-    def __init__(self, dim, p_dropout=0.2):
-        super().__init__()
-        self.block = nn.Sequential(
-            nn.ReLU(),
-            nn.Linear(dim, dim),
-            nn.Dropout(p_dropout),
-            nn.BatchNorm1d(dim)
-        )
-
-    def forward(self, x):
-        return x + self.block(x)
 
 
 class ResBetaVAE(nn.Module):
