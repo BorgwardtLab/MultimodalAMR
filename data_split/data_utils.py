@@ -46,11 +46,11 @@ class DataSplitter():
     # SIMPLE DATA SPLIT FUNCTIONS
 
     def random_train_val_test_split(self, val_size=0.1, test_size=0.2, random_state=42):
-        n_test = test_size if isinstance(test_size, int) else int(test_size*len(self.dataset))
-        n_val = val_size if isinstance(test_size, int) else int(test_size*len(self.dataset))
-        assert n_val+n_test < len(self.dataset), "Invalid val and test size"
+        n_test = test_size if isinstance(test_size, int) else int(test_size*len(self.long_table))
+        n_val = val_size if isinstance(test_size, int) else int(test_size*len(self.long_table))
+        assert n_val+n_test < len(self.long_table), "Invalid val and test size"
 
-        train_val_X, test_X = train_test_split(self.dataset, stratify=self.dataset["response"], test_size=n_test, random_state=random_state)
+        train_val_X, test_X = train_test_split(self.long_table, stratify=self.long_table["response"], test_size=n_test, random_state=random_state)
         train_X, val_X = train_test_split(train_val_X, stratify=train_val_X["response"], test_size=n_val, random_state=random_state**2)
         return train_X, val_X, test_X
 

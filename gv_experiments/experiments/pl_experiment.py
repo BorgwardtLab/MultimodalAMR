@@ -4,6 +4,7 @@ import torch.nn as nn
 import pytorch_lightning as pl
 from tqdm import tqdm
 from sklearn.metrics import matthews_corrcoef, accuracy_score, balanced_accuracy_score, f1_score, average_precision_score
+from sklearn.metrics import precision_score, recall_score
 from models.classifier import AMR_Classifier
 
 
@@ -13,7 +14,7 @@ class AMR_Classifier_Experiment(pl.LightningModule):
         self.config = config
         self.batch_size = config["batch_size"]
         self.model = AMR_Classifier(config)
-        self.loss_function = nn.BCELoss()
+        self.loss_function = nn.BCEWithLogitsLoss()
         self.threshold = config.get("threshold", 0.5)
 
     def configure_optimizers(self):
@@ -28,9 +29,9 @@ class AMR_Classifier_Experiment(pl.LightningModule):
 
     def _step(self, batch):
         # species_idx, phylo_species_embedding, spectrum, fprint_tensor, response = batch
-        response = batch[-1]
+        response = batch[-2]
         predictions = self.model(batch)
-        loss = self.loss_function(predictions, response)
+        loss = self.loss_function(predictions, response.view(-1,1))
 
         # matthews_corrcoef, accuracy_score, balanced_accuracy_score, f1_score, average_precision_score
         predicted_classes = (predictions >= self.threshold).int().cpu().numpy()
@@ -39,7 +40,9 @@ class AMR_Classifier_Experiment(pl.LightningModule):
             "mcc": matthews_corrcoef(response_classes, predicted_classes),
             "balanced_accuracy": balanced_accuracy_score(response_classes, predicted_classes),
             "f1": f1_score(response_classes, predicted_classes),
-            "AUPRC": average_precision_score(response_classes, predictions.cpu().detach().numpy())
+            "AUPRC": average_precision_score(response_classes, predictions.cpu().detach().numpy()),
+            "precision": precision_score(response_classes, predicted_classes, zero_division=0),
+            "recall": recall_score(response_classes, predicted_classes, zero_division=0)
         }
         return loss, logs
 
@@ -60,3 +63,16 @@ class AMR_Classifier_Experiment(pl.LightningModule):
             self.log("val_"+k, v, on_step=False, on_epoch=True)
         logs["loss"] = loss
         return logs
+
+
+    def test_step(self, batch, batch_idx):
+        loss, logs = self._step(batch)
+        self.log("test_loss", loss, on_step=False, on_epoch=True, batch_size=self.batch_size)
+        for k, v in logs.items():
+            self.log("test_"+k, v, on_step=False, on_epoch=True, batch_size=self.batch_size)
+        logs["loss"] = loss
+        return logs
+
+    # def test_epoch_end(self, outputs):
+    #     print(outputs)
+    #     return {}

@@ -34,7 +34,8 @@ class DrugResistanceDataset(Dataset):
         self,
         long_table_df,
         spectra_matrix,
-        drugs_embeddings
+        drugs_embeddings, 
+        species_list
     ):
         """
         Dataset class to retrieve combinations of species-samples-drugs-drug resistance quadruplets
@@ -50,12 +51,12 @@ class DrugResistanceDataset(Dataset):
         self.idx2species = {i: s for i, s in enumerate(sorted_species)}
         self.species2idx = {s: i for i, s in self.idx2species.items()}
 
-        sorted_samples = sorted(long_table_df["sample_id"].unique())
-        self.idx2sample = {i: smp for i, smp in enumerate(sorted_samples)}
+        # sorted_samples = sorted(long_table_df["sample_id"].unique())
+        self.idx2sample = {i: smp for i, smp in enumerate(species_list)}
         self.sample2idx = {smp: i for i, smp in self.idx2sample.items()}
 
         self.idx2drug = {i: d for i,
-                         d in drugs_embeddings["drug"].iteritems()}
+                         d in enumerate(drugs_embeddings.index)}
         self.drug2idx = {d: i for i, d in self.idx2drug.items()}
 
         self.drugs_tensor = torch.from_numpy(drugs_embeddings.values).float()
@@ -64,7 +65,7 @@ class DrugResistanceDataset(Dataset):
         return len(self.long_table)
 
     def __getitem__(self, idx):
-        species, sample_id, drug_name, response = self.long_table.iloc[idx]
+        species, sample_id, drug_name, response, dataset = self.long_table.iloc[idx]
 
         fprint_tensor = self.drugs_tensor[self.drug2idx[drug_name]]
         response = torch.tensor(response).float()
@@ -72,4 +73,32 @@ class DrugResistanceDataset(Dataset):
         spectrum = self.spectra_tensor[self.sample2idx[sample_id], :]
 
         species_idx = torch.LongTensor([self.species2idx[species]])
-        return species_idx, spectrum, fprint_tensor, response
+        return species_idx, spectrum, fprint_tensor, response, dataset
+
+
+
+class SampleEmbDataset(Dataset):
+    def __init__(self, long_table, spectra_matrix):
+        self.spectra_tensor = torch.tensor(spectra_matrix).float()
+
+        sorted_species = sorted(long_table["species"].unique())
+        self.idx2species = {i: s for i, s in enumerate(sorted_species)}
+        self.species2idx = {s: i for i, s in self.idx2species.items()}
+
+        sorted_samples = sorted(long_table["sample_id"].unique())
+        self.idx2sample = {i: smp for i, smp in enumerate(sorted_samples)}
+        self.sample2idx = {smp: i for i, smp in self.idx2sample.items()}
+
+        # Filter long table
+        long_table = long_table.drop(["drug", "response"], axis=1)
+        long_table = long_table.drop_duplicates()
+        self.long_table = long_table
+
+    def __len__(self):
+        return len(self.long_table)
+
+    def __getitem__(self, idx):
+        species, sample_id = self.long_table.iloc[idx]
+        spectrum = self.spectra_tensor[self.sample2idx[sample_id], :]
+        species_idx = torch.LongTensor([self.species2idx[species]])
+        return species_idx, spectrum

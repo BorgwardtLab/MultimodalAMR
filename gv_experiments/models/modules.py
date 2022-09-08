@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from utils import calc_conv1d_output_size
+from .utils import calc_conv1d_output_size
 
 class ResBlock(nn.Module):
     def __init__(self, dim, p_dropout=0.2):
@@ -59,7 +59,7 @@ class Conv1d_Block(nn.Module):
 
         self.block = nn.Sequential(*layers)
 
-        conv_out_size = int(calc_conv1d_output_size(input_dim, kernel_sizes, stride=stride)*num_kernels[-1])
+        conv_out_size = int(calc_conv1d_output_size(input_dim, kernel_sizes, stride=stride, padding=padding)*num_kernels[-1])
 
         self.out_layer = nn.Sequential(nn.Flatten(), nn.Linear(conv_out_size, output_dim)) #Projection Layer
 

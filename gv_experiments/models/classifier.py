@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from modules import MLP_Block
+from .modules import MLP_Block, Conv1d_Block
 
 
 
@@ -29,7 +29,7 @@ class AMR_Classifier(nn.Module):
         self.sample_emb = MLP_Block(sample_embedder_layers_sizes)
 
         # Maldi-tof spectrum embedding
-        self.spectrum_emb = SpectrumEmbedding()
+        self.spectrum_emb = Conv1d_Block()
 
         # Output layer/operation
         # self.out = nn.CosineSimilarity(dim=1, eps=1e-6)
@@ -45,7 +45,7 @@ class AMR_Classifier(nn.Module):
 
 
     def forward(self, batch):
-        species_idx, x_spectrum, dr_emb, _ = batch
+        species_idx, x_spectrum, dr_emb, response, dataset = batch
         spectrum_embedding = self.embed_spectrum(x_spectrum)
         sample_emb = self.embed_sample(species_idx, spectrum_embedding)
         return self.out(torch.cat([dr_emb, sample_emb], dim=1))
