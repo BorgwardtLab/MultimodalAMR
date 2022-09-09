@@ -26,7 +26,7 @@ if __name__=="__main__":
 
     parser = ArgumentParser()
 
-    parser.add_argument("--experiment_name", type=str, default="test111")
+    parser.add_argument("--experiment_name", type=str, default="rs2")
     parser.add_argument("--experiment_group", type=str, default="random_split")
     parser.add_argument("--seed", type=int, default=0)
 
@@ -47,10 +47,10 @@ if __name__=="__main__":
 
     parser.add_argument("--conv_out_size", type=int, default=64)
 
-    parser.add_argument("--n_epochs", type=int, default=1)
-    parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--patience", type=int, default=5)
-    parser.add_argument("--learning_rate", type=float, default=0.001)
+    parser.add_argument("--n_epochs", type=int, default=100)
+    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--patience", type=int, default=10)
+    parser.add_argument("--learning_rate", type=float, default=0.01)
     parser.add_argument("--weight_decay", type=float, default=1e-5)
     parser.add_argument("--num_workers", type=int, default=3)
 
@@ -120,7 +120,7 @@ if __name__=="__main__":
     print("Training..")
     trainer = pl.Trainer(devices="auto", accelerator="auto", default_root_dir=output_folder, max_epochs=args.n_epochs, callbacks=callbacks,
                          logger=tb_logger, log_every_n_steps=3,
-                         limit_train_batches=20, limit_val_batches=10, #limit_test_batches=5
+                        #  limit_train_batches=20, limit_val_batches=10, #limit_test_batches=5
                          )
     trainer.fit(experiment, train_dataloaders=train_loader,
                 val_dataloaders=val_loader)
