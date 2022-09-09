@@ -27,8 +27,8 @@ class MLP_Block(nn.Module):
             layers.append(
                 nn.Linear(layers_sizes[k], layers_sizes[k + 1])
             )
-            # if k<len(layers_sizes) - 2:
-            layers.extend([nn.ReLU(), nn.Dropout(dropout)])
+            if k<len(layers_sizes) - 2:
+                layers.extend([nn.ReLU(), nn.Dropout(dropout)])
 
         self.block = nn.Sequential(*layers)
 

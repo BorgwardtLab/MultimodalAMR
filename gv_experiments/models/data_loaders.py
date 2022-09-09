@@ -59,7 +59,7 @@ class DrugResistanceDataset(Dataset):
                          d in enumerate(drugs_embeddings.index)}
         self.drug2idx = {d: i for i, d in self.idx2drug.items()}
 
-        self.drugs_tensor = torch.from_numpy(drugs_embeddings.values).float()
+        self.drugs_tensor = torch.from_numpy(drugs_embeddings.values/np.sum(drugs_embeddings.values)).float()
 
     def __len__(self):
         return len(self.long_table)
