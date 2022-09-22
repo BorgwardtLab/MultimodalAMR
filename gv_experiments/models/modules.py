@@ -16,6 +16,15 @@ class ResBlock(nn.Module):
         return x + self.block(x)
 
 
+class ResMLP(nn.Module):
+    def __init__(self, n_layers, dim, output_dim, p_dropout=0.2):
+        super().__init__()
+        layers = [ResBlock(dim, p_dropout=p_dropout) for _ in range(n_layers)] + [nn.Linear(dim, output_dim)]
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.net(x)
+
 
 class MLP_Block(nn.Module):
     def __init__(self, layers_sizes, dropout=0.1):

@@ -34,7 +34,7 @@ class DrugResistanceDataset(Dataset):
         self,
         long_table_df,
         spectra_matrix,
-        drugs_embeddings, 
+        drugs_df, 
         species_list
     ):
         """
@@ -42,7 +42,7 @@ class DrugResistanceDataset(Dataset):
 
         :long_table: DataFrame from processed csv file with the quadruplets for each hospital
         :spectra_matrix: matrix of 6000-dimensional MALDI-TOF spectra
-        :drugs_embeddings: DataFrame of embeddings derived from the ChEMBL VAE from morgan fingerprints
+        :drugs_df: DataFrame of embeddings derived from the ChEMBL VAE from morgan fingerprints
         """
         self.long_table = long_table_df
         self.spectra_tensor = torch.tensor(spectra_matrix).float()
@@ -56,10 +56,8 @@ class DrugResistanceDataset(Dataset):
         self.sample2idx = {smp: i for i, smp in self.idx2sample.items()}
 
         self.idx2drug = {i: d for i,
-                         d in enumerate(drugs_embeddings.index)}
+                         d in enumerate(drugs_df.index)}
         self.drug2idx = {d: i for i, d in self.idx2drug.items()}
-
-        self.drugs_tensor = torch.from_numpy(drugs_embeddings.values/np.sum(drugs_embeddings.values)).float()
 
     def __len__(self):
         return len(self.long_table)
@@ -76,6 +74,37 @@ class DrugResistanceDataset(Dataset):
         return species_idx, spectrum, fprint_tensor, response, dataset
 
 
+
+class DrugResistanceDataset_VAEEmbeddings(DrugResistanceDataset):
+    def __init__(
+        self,
+        long_table_df,
+        spectra_matrix,
+        drugs_embeddings, 
+        species_list
+    ):
+        super().__init__(long_table_df, spectra_matrix, drugs_embeddings, species_list)
+        self.drugs_tensor = torch.from_numpy(drugs_embeddings.values/np.sum(drugs_embeddings.values)).float()
+
+
+
+class DrugResistanceDataset_Fingerprints(DrugResistanceDataset):
+    def __init__(
+        self,
+        long_table_df,
+        spectra_matrix,
+        drugs_fingerprints, 
+        species_list,
+        fingerprint_class="MACCS"
+    ):
+        super().__init__(long_table_df, spectra_matrix, drugs_fingerprints, species_list)
+        
+        self.drugs_tensor = torch.tensor(
+            [
+                [int(v) for v in list(row[fingerprint_class + "_fp"])]
+                for i, row in drugs_fingerprints.iterrows()
+            ]
+        ).float()
 
 class SampleEmbDataset(Dataset):
     def __init__(self, long_table, spectra_matrix):

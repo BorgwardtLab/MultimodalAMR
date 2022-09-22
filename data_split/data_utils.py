@@ -91,7 +91,8 @@ class DataSplitter():
     ###############################################################
     # AGGREGATE SPLITTING FUNCTIONS
     
-    def combination_train_test_split(self, df, test_size=0.2):
+    def combination_train_test_split(self, df, test_size=0.2, random_state=42):
+        np.random.seed(random_state)
         drug_counts_mapping = dict(df["drug"].value_counts())
         drugs = sorted(list(df["drug"].unique()), key=lambda x: drug_counts_mapping[x])
         species_counts_mapping = dict(df["species"].value_counts())
