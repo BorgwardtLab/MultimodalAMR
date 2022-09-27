@@ -9,7 +9,7 @@ class ResBlock(nn.Module):
             nn.ReLU(),
             nn.Linear(dim, dim),
             nn.Dropout(p_dropout),
-            nn.BatchNorm1d(dim)
+            # nn.BatchNorm1d(dim)
         )
 
     def forward(self, x):

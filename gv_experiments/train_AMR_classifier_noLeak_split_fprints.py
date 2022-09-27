@@ -39,23 +39,23 @@ if __name__=="__main__":
                         default="../processed_data/drug_fingerprints.csv")
 
 
-    parser.add_argument("--fingerprint_class", type=str, default="morgan_512", choices=["MACCS", "morgan_512", "morgan_1024", "pubchem"])
-    parser.add_argument("--fingerprint_size", type=int, default=512)
+    parser.add_argument("--fingerprint_class", type=str, default="MACCS", choices=["MACCS", "morgan_512", "morgan_1024", "pubchem"])
+    parser.add_argument("--fingerprint_size", type=int, default=167)
 
     parser.add_argument("--drug_emb_type", type=str, default="fingerprint", choices=["fingerprint", "vae_embedding"])
-    parser.add_argument("--drug_hidden_layers", type=int, default=3)
+    parser.add_argument("--drug_hidden_layers", type=int, default=2)
     parser.add_argument("--drug_hidden_dim", type=int, default=64)
 
     parser.add_argument("--species_embedding_dim", type=int, default=16)
     parser.add_argument("--drug_embedding_dim", type=int, default=16)
     parser.add_argument(
-        "--sample_hidden_layers", type=int, default=3
+        "--sample_hidden_layers", type=int, default=2
     )
     parser.add_argument("--sample_embedding_dim", type=int, default=16)
 
     parser.add_argument("--conv_out_size", type=int, default=64)
 
-    parser.add_argument("--n_epochs", type=int, default=5)
+    parser.add_argument("--n_epochs", type=int, default=50)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--patience", type=int, default=10)
     parser.add_argument("--learning_rate", type=float, default=0.001)
@@ -67,13 +67,15 @@ if __name__=="__main__":
     args = parser.parse_args()
     config = vars(args)
 
-    output_folder = join("outputs", args.experiment_group, args.experiment_name)
+    output_folder = join("outputs", args.experiment_group, args.experiment_name+"_"+str(args.seed))
     if not exists(output_folder):
         os.makedirs(output_folder)
 
     # if exists(join(output_folder, "embeddings", "drugs_embeddings.csv")):
     #     sys.exit(0)
-
+    metrics_folder = join("outputs", args.experiment_group, args.experiment_name+"_metrics")
+    if not exists(metrics_folder):
+        os.makedirs(metrics_folder)
 
     driams_long_table = pd.read_csv(args.driams_long_table)
     spectra_matrix = np.load(args.spectra_matrix)
@@ -140,22 +142,20 @@ if __name__=="__main__":
 
     print("Testing..")
     test_results = trainer.test(ckpt_path="best", dataloaders=test_loader)
-    # test_classification = {
-    #     k: float(v) for k, v in test_results[0]["test_classification"].items()}
-    with open(join(output_folder, "test_metrics.json"), "w") as f:
+    with open(join(metrics_folder, "test_metrics_{}.json".format(args.seed)), "w") as f:
         json.dump(test_results[0], f, indent=2)
 
-    print("Saving embeddings..")
-    experiment.model.eval()
-    embeddings_folder = join(output_folder, "embeddings")
-    if not exists(embeddings_folder):
-        os.makedirs(embeddings_folder)
+    # print("Saving embeddings..")
+    # experiment.model.eval()
+    # embeddings_folder = join(output_folder, "embeddings")
+    # if not exists(embeddings_folder):
+    #     os.makedirs(embeddings_folder)
 
-    # Species learned embeddings
-    species_list = [idx2species[i] for i in range(len(idx2species))]
-    species_lrn_embs = pd.DataFrame(experiment.model.species_emd.weight.detach().numpy(), 
-                    index=species_list, columns=["z{}".format(i) for i in range(config["species_embedding_dim"])])
-    species_lrn_embs.index.name = "species"
-    species_lrn_embs.to_csv(join(embeddings_folder, "species_learned_embeddings.csv"))
+    # # Species learned embeddings
+    # species_list = [idx2species[i] for i in range(len(idx2species))]
+    # species_lrn_embs = pd.DataFrame(experiment.model.species_emd.weight.detach().numpy(), 
+    #                 index=species_list, columns=["z{}".format(i) for i in range(config["species_embedding_dim"])])
+    # species_lrn_embs.index.name = "species"
+    # species_lrn_embs.to_csv(join(embeddings_folder, "species_learned_embeddings.csv"))
     
     print("Testing complete")

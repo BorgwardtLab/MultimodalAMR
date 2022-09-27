@@ -42,8 +42,8 @@ class AMR_Classifier(nn.Module):
                                          ResMLP(config["drug_hidden_layers"], config["drug_hidden_dim"], config["drug_embedding_dim"], p_dropout=0.2))
 
         # Output layer/operation
-        # self.out = nn.CosineSimilarity(dim=1, eps=1e-6)
-        self.out = nn.Linear(config["sample_embedding_dim"]+config["drug_embedding_dim"], 1)
+        self.out = nn.CosineSimilarity(dim=1, eps=1e-6)
+        # self.out = nn.Linear(config["sample_embedding_dim"]+config["drug_embedding_dim"], 1)
 
 
 
@@ -62,4 +62,5 @@ class AMR_Classifier(nn.Module):
         spectrum_embedding = self.embed_spectrum(x_spectrum)
         sample_emb = self.embed_sample(species_idx, spectrum_embedding)
         dr_emb = self.drug_emb(dr_tensor)
-        return self.out(torch.cat([dr_emb, sample_emb], dim=1))
+        return torch.logit(torch.square(self.out(dr_emb, sample_emb))).view(-1,1)
+        # return self.out(torch.cat([dr_emb, sample_emb], dim=1))
