@@ -6,15 +6,16 @@ import pytorch_lightning as pl
 from tqdm import tqdm
 from sklearn.metrics import matthews_corrcoef, accuracy_score, balanced_accuracy_score, f1_score, average_precision_score
 from sklearn.metrics import precision_score, recall_score
-from models.classifier import AMR_Classifier
+# from models.classifier import AMR_Classifier
 
 
-class AMR_Classifier_Experiment(pl.LightningModule):
-    def __init__(self, config):
+class Classifier_Experiment(pl.LightningModule):
+    def __init__(self, config, model):
         super().__init__()
         self.config = config
         self.batch_size = config["batch_size"]
-        self.model = AMR_Classifier(config)
+        # self.model = AMR_Classifier(config)
+        self.model = model
         self.loss_function = nn.BCEWithLogitsLoss()
         self.threshold = config.get("threshold", 0.5)
 
@@ -29,7 +30,7 @@ class AMR_Classifier_Experiment(pl.LightningModule):
         return optimizer
 
     def _step(self, batch):
-        # species_idx, phylo_species_embedding, spectrum, fprint_tensor, response = batch
+        # species_idx, spectrum, fprint_tensor, response, dataset = batch
         response = batch[-2]
         logits = self.model(batch)
         loss = self.loss_function(logits, response.view(-1,1))
@@ -75,6 +76,3 @@ class AMR_Classifier_Experiment(pl.LightningModule):
         logs["loss"] = loss
         return logs
 
-    # def test_epoch_end(self, outputs):
-    #     print(outputs)
-    #     return {}
