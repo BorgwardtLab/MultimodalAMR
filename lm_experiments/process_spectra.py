@@ -11,26 +11,40 @@ if __name__ == "__main__":
 
     for dset in ["A", "B", "C", "D"]:
 
-        print("Processing DRIAMS-{}".format(dset))
+        for year in ["2015", "2016", "2017", "2018"]:
 
-        current_samples = long_table.loc[long_table.dataset == dset].sample_id.unique()
+            print("Processing DRIAMS-{}".format(dset))
 
-#        current_samples = sorted(list(long_table["sample_id"].unique()))
-        samples_spectra = []
+            current_samples = long_table.loc[
+                long_table.dataset == dset
+            ].sample_id.unique()
 
-        for i, sample_id in tqdm(enumerate(current_samples)):
-            spectrum = pd.read_csv(
-                f"../data/DRIAMS-{dset}/binned_6000/2018/{sample_id}.txt",
-                sep=" ",
-                index_col=0,
-            )
-            samples_spectra.append(spectrum.values.flatten())
-        samples_spectra = np.vstack(samples_spectra)
+            #        current_samples = sorted(list(long_table["sample_id"].unique()))
+            samples_spectra = []
 
-        spectra_df = pd.DataFrame(data=samples_spectra, index=current_samples)
+            for i, sample_id in tqdm(enumerate(current_samples)):
 
-        spectra_df.to_csv(
-            "../data/DRIAMS-{}/spectra_binned_6000_2018_reprocessed.csv".format(dset)
-        )
+                try:
+                    spectrum = pd.read_csv(
+                        f"../data/DRIAMS-{dset}/binned_6000/{year}/{sample_id}.txt",
+                        sep=" ",
+                        index_col=0,
+                    )
+                    samples_spectra.append(spectrum.values.flatten())
+
+                except FileNotFoundError:
+                    continue
+
+            if len(samples_spectra) > 0:
+
+                samples_spectra = np.vstack(samples_spectra)
+
+                spectra_df = pd.DataFrame(data=samples_spectra, index=current_samples)
+
+                spectra_df.to_csv(
+                    "../data/DRIAMS-{}/spectra_binned_6000_{}_reprocessed.csv".format(
+                        dset, year
+                    )
+                )
 
         print("DRIAMS-{} processed!".format(dset))
