@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
         samples_spectra = []
 
-        for i, sample_id in tqdm(enumerate(all_samples)):
+        for i, sample_id in tqdm(enumerate(current_samples)):
             spectrum = pd.read_csv(
                 f"../data/DRIAMS-B/binned_6000/2018/{sample_id}.txt",
                 sep=" ",
@@ -26,7 +26,7 @@ if __name__ == "__main__":
             samples_spectra.append(spectrum.values.flatten())
         samples_spectra = np.vstack(samples_spectra)
 
-        spectra_df = pd.DataFrame(data=samples_spectra, index=all_samples)
+        spectra_df = pd.DataFrame(data=samples_spectra, index=current_samples)
 
         spectra_df.to_csv(
             "../data/DRIAMS-{}/spectra_binned_6000_2018_reprocessed.csv".format(dataset)
