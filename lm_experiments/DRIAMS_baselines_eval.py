@@ -42,7 +42,7 @@ def main(args):
 
     print("Loading data")
     data = pd.read_csv("../processed_data/DRIAMS_combined_long_table.csv")
-    dsplit = DataSplitter(data, dataset=args.dataset)
+    dsplit = DataSplitter(data, dataset=args.dset)
     counts = dsplit.long_table[["species", "drug"]].value_counts()
     experiments = sorted(list(counts[counts > args.threshold].index))
 
@@ -84,7 +84,7 @@ def main(args):
             "logisticregression__C": uniform(loc=0.1, scale=9.9),
         }
 
-    out_folder = join(args.output_folder, f"DRIAMS_{args.dataset}", args.model)
+    out_folder = join(args.output_folder, f"DRIAMS_{args.dset}", args.model)
 
     if not exists(out_folder):
         os.makedirs(out_folder)

@@ -9,17 +9,18 @@ if __name__ == "__main__":
 
     long_table = pd.read_csv("../processed_data/DRIAMS_combined_long_table.csv")
 
-    for dataset in ["A", "B", "C", "D"]:
+    for dset in ["A", "B", "C", "D"]:
 
-        print("Processing DRIAMS-{}".format(dataset))
+        print("Processing DRIAMS-{}".format(dset))
 
-        current_samples = long_table[long_table["dataset"] == dataset].reset_index()
+        current_samples = long_table.loc[long_table.dataset == dset].sample_id.unique()
 
+#        current_samples = sorted(list(long_table["sample_id"].unique()))
         samples_spectra = []
 
         for i, sample_id in tqdm(enumerate(current_samples)):
             spectrum = pd.read_csv(
-                f"../data/DRIAMS-B/binned_6000/2018/{sample_id}.txt",
+                f"../data/DRIAMS-{dset}/binned_6000/2018/{sample_id}.txt",
                 sep=" ",
                 index_col=0,
             )
@@ -29,7 +30,7 @@ if __name__ == "__main__":
         spectra_df = pd.DataFrame(data=samples_spectra, index=current_samples)
 
         spectra_df.to_csv(
-            "../data/DRIAMS-{}/spectra_binned_6000_2018_reprocessed.csv".format(dataset)
+            "../data/DRIAMS-{}/spectra_binned_6000_2018_reprocessed.csv".format(dset)
         )
 
-        print("DRIAMS-{} processed!".format(dataset))
+        print("DRIAMS-{} processed!".format(dset))
