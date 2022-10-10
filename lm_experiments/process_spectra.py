@@ -15,14 +15,13 @@ if __name__ == "__main__":
 
             print("Processing DRIAMS-{}".format(dset))
 
-            current_samples = long_table.loc[
-                long_table.dataset == dset
-            ].sample_id.unique()
+            full_samples = long_table.loc[long_table.dataset == dset].sample_id.unique()
 
             #        current_samples = sorted(list(long_table["sample_id"].unique()))
             samples_spectra = []
 
-            for i, sample_id in tqdm(enumerate(current_samples)):
+            current_samples = []
+            for i, sample_id in tqdm(enumerate(full_samples)):
 
                 try:
                     spectrum = pd.read_csv(
@@ -31,6 +30,7 @@ if __name__ == "__main__":
                         index_col=0,
                     )
                     samples_spectra.append(spectrum.values.flatten())
+                    current_samples.append(sample_id)
 
                 except FileNotFoundError:
                     continue
