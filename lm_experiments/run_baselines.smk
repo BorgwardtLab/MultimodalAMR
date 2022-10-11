@@ -25,7 +25,7 @@ rule baselines:
 
 rule train_baselines:
     input:
-        data_path="../data/DRIAMS-B/spectra_binned_6000_2018_reprocessed.csv",
+        data_path="../data/DRIAMS-B/spectra_binned_6000_reprocessed.csv",
     output:
         trained_models=os.path.join(outpath, "DRIAMS_{dataset}/{model}/config.json"),
     shell:
