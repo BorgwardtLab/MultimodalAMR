@@ -1,0 +1,39 @@
+"""
+
+Snakefile for data and imputation.
+Execution: sbatch snakemake
+Plot DAG: snakemake --snakefile deepof_experiments.smk --forceall --dag | dot -Tpdf > deepof_experiments_DAG.pdf
+Plot rule graph: snakemake --snakefile deepof_experiments.smk --forceall --rulegraph | dot -Tpdf > deepof_experiments_RULEGRAPH.pdf
+
+"""
+
+outpath = ""
+
+model = ["LogisticRegression"]
+dataset = ["B"]
+
+
+rule baselines:
+    input:
+        # Train a variety of models
+        expand(
+            os.path.join(outpath, "DRIAMS_{dataset}/{model}/config.json"),
+            dataset=dataset,
+            model=model,
+        ),
+
+
+rule train_baselines:
+    input:
+        data_path="../data/DRIAMS-B/spectra_binned_6000_2018_reprocessed.csv",
+    output:
+        trained_models=os.path.join(outpath, "DRIAMS_{dataset}/{model}/config.json"),
+    shell:
+        "python DRIAMS_baselines_eval.py "
+        "--dataset {wildcards.dataset} "
+        "--model {wildcards.model} "
+        "--spectra_matrix_path {input.data_path} "
+        "--output . "
+        "--threshold 100 "
+        "--n_random_iter 10 "
+        "--min_samples_per_class 50"

@@ -171,7 +171,7 @@ def get_metrics(cm):
     # Specificity or true negative rate
     TNR = TN / (TN + FP)
     # Precision or positive predictive value
-    # PPV = TP / (TP + FP)
+    PPV = TP / (TP + FP)
     # # Negative predictive value
     # NPV = TN / (TN + FN)
     # # Fall out or false positive rate
@@ -184,4 +184,4 @@ def get_metrics(cm):
     # Overall accuracy
     ACC = (TP + TN) / (TP + FP + FN + TN)
 
-    return TPR, TNR, ACC
+    return TPR, TNR, ACC, PPV

@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+from lightgbm import LGBMClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.base import clone
@@ -29,6 +29,7 @@ sys.path.insert(0, "../")
 
 from data_utils import DataSplitter, get_metrics
 import os
+import pickle
 from os.path import join, exists
 import json
 from sklearn.preprocessing import StandardScaler
@@ -60,14 +61,12 @@ def main(args):
         "mcc": make_scorer(matthews_corrcoef),
     }
 
-    if args.model == "RF":
-        model_template = RandomForestClassifier()
+    if args.model == "GBM":
+        model_template = LGBMClassifier()
         distributions = {
-            "randomforestclassifier__n_estimators": [10, 50, 100, 200, 500, 1000],
-            "randomforestclassifier__max_depth": [2, 3, 5, 7, None],
-            "randomforestclassifier__max_features": ["auto", "sqrt"],
-            "randomforestclassifier__min_samples_split": [2, 5, 10],
-            "randomforestclassifier__criterion": ["gini", "entropy"],
+            "lgbmclassifier__max_depth": [2, 3, 5, 7, None],
+            "lgbmclassifier__min_data_in_leaf": [2, 5, 10, 50, 100],
+            "lgbmclassifier__num_leaves": [2**2, 2**3, 2**5, 2**7],
         }
 
     elif args.model == "MLP":
@@ -118,6 +117,16 @@ def main(args):
 
         train_test_folds = dsplit.baseline_kfold_cv(target_df, cv=5)
 
+        # Save splits to disk
+        with open(
+            os.path.join(join(out_folder, f"{sp}_{dr}_splits.pkl")), "wb"
+        ) as handle:
+            pickle.dump(train_test_folds, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(
+            os.path.join(join(out_folder, f"{sp}_{dr}_target.pkl")), "wb"
+        ) as handle:
+            pickle.dump(target_df, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
         for n_fold, (train_data, test_data) in tqdm(enumerate(train_test_folds)):
 
             X_train = train_data.drop("response", axis=1)
@@ -162,7 +171,7 @@ def main(args):
             assert len(set(y_pred)) == 2
 
             cm = confusion_matrix(y_test.values, y_pred)
-            tpr, tnr, acc = get_metrics(cm)
+            tpr, tnr, acc, precision = get_metrics(cm)
             f1 = f1_score(y_test.values, y_pred)
             mcc = matthews_corrcoef(y_test.values, y_pred)
             balanced_acc = balanced_accuracy_score(y_test.values, y_pred)
@@ -173,14 +182,15 @@ def main(args):
             if hasattr(model, "predict_proba"):
                 idx = np.where(model.classes_ == 1)[0]
                 y_proba = model.predict_proba(X_test)[:, idx]
-                precision, recall, thresholds = precision_recall_curve(y_test, y_proba)
-                auprc = auc(recall, precision)
+                precisions, recall, thresholds = precision_recall_curve(y_test, y_proba)
+                auprc = auc(recall, precisions)
                 roc_auc = roc_auc_score(y_test.values, y_proba)
 
             split_result = {
                 "species": sp,
                 "drug": dr,
                 "fold": n_fold,
+                "precision": precision,
                 "recall": tpr,
                 "specificity": tnr,
                 "accuracy": acc,
@@ -210,7 +220,7 @@ if __name__ == "__main__":
         "--model",
         type=str,
         default="LogisticRegression",
-        choices=["RF", "MLP", "LogisticRegression"],
+        choices=["GBM", "MLP", "LogisticRegression"],
     )
     parser.add_argument(
         "--spectra_matrix_path",
