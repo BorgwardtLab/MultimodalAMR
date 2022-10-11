@@ -17,22 +17,20 @@ rule baselines:
     input:
         # Train a variety of models
         expand(
-            os.path.join(outpath, "DRIAMS_{dataset}/{model}/config.json"),
+            outpath + "DRIAMS_{dataset}/{model}/config.json",
             dataset=dataset,
             model=model,
         ),
 
 
 rule train_baselines:
-    input:
-        data_path="../data/DRIAMS-{dataset}/spectra_binned_6000_reprocessed.csv",
     output:
         trained_models=os.path.join(outpath, "DRIAMS_{dataset}/{model}/config.json"),
     shell:
         "python DRIAMS_baselines_eval.py "
         "--dataset {wildcards.dataset} "
         "--model {wildcards.model} "
-        "--spectra_matrix_path {input.data_path} "
+        "--spectra_matrix_path ../data/DRIAMS-{wildcards.dataset}/spectra_binned_6000_reprocessed.csv "
         "--output . "
         "--threshold 100 "
         "--n_random_iter 10 "
