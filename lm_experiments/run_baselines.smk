@@ -9,8 +9,8 @@ Plot rule graph: snakemake --snakefile deepof_experiments.smk --forceall --ruleg
 
 outpath = ""
 
-model = ["LogisticRegression"]
-dataset = ["B"]
+model = ["LogisticRegression", "GBM", "MLP"]
+dataset = ["A", "B", "C", "D"]
 
 
 rule baselines:
