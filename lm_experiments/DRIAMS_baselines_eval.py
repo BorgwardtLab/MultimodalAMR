@@ -19,6 +19,7 @@ from sklearn.metrics import (
     roc_auc_score,
     auc,
     precision_recall_curve,
+    roc_curve,
 )
 from scipy.stats import uniform
 from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV
@@ -195,7 +196,7 @@ def main(args):
                 if hasattr(model, "predict_proba"):
                     idx = np.where(model.classes_ == 1)[0]
                     y_proba = model.predict_proba(X_test)[:, idx]
-                    fpr, tpr, roc_thresholds = metrics.roc_curve(
+                    fpr, tpr, roc_thresholds = roc_curve(
                         y_test, y_proba, pos_label=1
                     )
                     precisions, recall, pr_thresholds = precision_recall_curve(
