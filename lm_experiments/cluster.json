@@ -6,6 +6,6 @@
         "stderr": "snakemake_logs/{rule}.err",
         "stdout": "snakemake_logs/{rule}.out",
         "jobname": "{rule}",
-        "cpus": "2"
+        "cpus": "10"
     }
 }
