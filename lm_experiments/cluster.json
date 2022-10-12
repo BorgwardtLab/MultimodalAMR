@@ -1,11 +1,10 @@
 {
-    "__default__":
-    {
+    "__default__": {
         "mem": "150G",
         "time": "10-0",
         "stderr": "snakemake_logs/{rule}.err",
         "stdout": "snakemake_logs/{rule}.out",
         "jobname": "{rule}",
-        "cpus": "10"
+        "cpus": "10",
     }
 }

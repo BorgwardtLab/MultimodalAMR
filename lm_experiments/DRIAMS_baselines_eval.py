@@ -154,10 +154,6 @@ def main(args):
                 X_test = test_data.drop("response", axis=1)
                 y_test = test_data["response"]
 
-                # Check that both classes are present in each fold
-                assert len(set(y_train)) == 2
-                assert len(set(y_test)) == 2
-
                 model = clone(model_template)
                 model = make_pipeline(SMOTE(), StandardScaler(), model)
 
