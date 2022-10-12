@@ -183,9 +183,6 @@ def main(args):
                 model.fit(X_train, y_train)
                 y_pred = model.predict(X_test)
 
-                # Check that we're predicting both classes
-                assert len(set(y_pred)) == 2
-
                 cm = confusion_matrix(y_test.values, y_pred)
                 tpr, tnr, acc, precision = get_metrics(cm)
                 f1 = f1_score(y_test.values, y_pred)
@@ -198,11 +195,32 @@ def main(args):
                 if hasattr(model, "predict_proba"):
                     idx = np.where(model.classes_ == 1)[0]
                     y_proba = model.predict_proba(X_test)[:, idx]
-                    precisions, recall, thresholds = precision_recall_curve(
+                    fpr, tpr, roc_thresholds = metrics.roc_curve(
+                        y_test, y_proba, pos_label=1
+                    )
+                    precisions, recall, pr_thresholds = precision_recall_curve(
                         y_test, y_proba
                     )
                     auprc = auc(recall, precisions)
                     roc_auc = roc_auc_score(y_test.values, y_proba)
+
+                    # Produce ROC and PR curves to output
+                    with open(
+                        os.path.join(join(out_folder, f"{sp}_{dr}_pr.pkl")), "wb"
+                    ) as handle:
+                        pickle.dump(
+                            [precisions, recall, pr_thresholds],
+                            handle,
+                            protocol=pickle.HIGHEST_PROTOCOL,
+                        )
+                    with open(
+                        os.path.join(join(out_folder, f"{sp}_{dr}_roc.pkl")), "wb"
+                    ) as handle:
+                        pickle.dump(
+                            [fpr, tpr, roc_thresholds],
+                            handle,
+                            protocol=pickle.HIGHEST_PROTOCOL,
+                        )
 
                 split_result = {
                     "species": sp,
