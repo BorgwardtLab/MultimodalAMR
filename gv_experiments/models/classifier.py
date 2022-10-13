@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from .modules import MLP_Block, Conv1d_Block, ResMLP
 
 
@@ -94,6 +95,25 @@ class MLP_Classifier(nn.Module):
     def forward(self, batch):
         species_idx, x_spectrum, dr_tensor, response, dataset = batch
         return self.net(self.projection_layer(torch.cat([x_spectrum, dr_tensor], dim=1)))
+
+
+class SpeciesBaseline_MLP_Classifier(MLP_Classifier):
+    """Overall model definition."""
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.n_species = config["n_unique_species"]
+        # self.config = config
+
+        # self.projection_layer = nn.Sequential(nn.Linear(config["input_size"], config["hidden_size"]), nn.ReLU())
+        # self.net = ResMLP(config["n_hidden_layers"], 
+        #                          config["hidden_size"],
+        #                          1, p_dropout=0.2)
+
+    def forward(self, batch):
+        species_idx, x_spectrum, dr_tensor, response, dataset = batch
+        species_tensor = F.one_hot(species_idx, num_classes=self.n_species).squeeze()
+        return self.net(self.projection_layer(torch.cat([species_tensor, dr_tensor], dim=1)))
 
 
 class AMR_Classifier_noSP(nn.Module):
