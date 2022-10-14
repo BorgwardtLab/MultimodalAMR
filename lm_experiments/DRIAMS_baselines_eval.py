@@ -237,7 +237,6 @@ def main(args):
                     "roc_auc": roc_auc,
                     "auprc": auprc,
                     "cmatrix": list(cm.flatten()),
-                    "best_params": config,  # "n_test": len(y_pred),
                 }
                 baseline_results.append(split_result)
 
