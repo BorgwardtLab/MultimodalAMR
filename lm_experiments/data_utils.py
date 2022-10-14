@@ -148,7 +148,8 @@ class DataSplitter:
             .isin(test_pairings[["drug", "species"]].apply(tuple, 1))
         ].reset_index(drop=True)
         return train_data, test_data
-        # return train_data, test_data
+
+    # return train_data, test_data
 
     def drug_zero_shot_split(self, drug=None):
         ix = self.long_table["drug"] == drug
@@ -157,8 +158,9 @@ class DataSplitter:
             ~ix
         ].reset_index(drop=True)
 
-    # END - AGGREGATE SPLITTING FUNCTIONS
-    ###############################################################
+
+# END - AGGREGATE SPLITTING FUNCTIONS
+###############################################################
 
 
 def get_metrics(cm):

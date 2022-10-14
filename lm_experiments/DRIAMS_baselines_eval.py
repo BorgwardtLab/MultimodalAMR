@@ -160,26 +160,28 @@ def main(args):
 
                 skf = StratifiedKFold(n_splits=5)
 
-                grid_search = RandomizedSearchCV(
-                    model,
-                    distributions,
-                    scoring=scorers,
-                    refit="f1_score",
-                    cv=skf,
-                    return_train_score=False,
-                    n_jobs=3,
-                    n_iter=args.n_random_iter,
-                    verbose=0,
-                    random_state=n_fold,
-                )
+                if args.n_random_iter > 1:
+                    grid_search = RandomizedSearchCV(
+                        model,
+                        distributions,
+                        scoring=scorers,
+                        refit="f1_score",
+                        cv=skf,
+                        return_train_score=False,
+                        n_jobs=3,
+                        n_iter=args.n_random_iter,
+                        verbose=0,
+                        random_state=n_fold,
+                    )
 
-                grid_search.fit(X_train.values, y_train.values)
+                    grid_search.fit(X_train.values, y_train.values)
+                    config = grid_search.best_params_
 
-                config = grid_search.best_params_
                 model = clone(model_template)
                 model = make_pipeline(SMOTE(), StandardScaler(), model)
 
-                model.set_params(**config)
+                if args.n_random_iter > 1:
+                    model.set_params(**config)
 
                 model.fit(X_train, y_train)
                 y_pred = model.predict(X_test)
@@ -196,9 +198,7 @@ def main(args):
                 if hasattr(model, "predict_proba"):
                     idx = np.where(model.classes_ == 1)[0]
                     y_proba = model.predict_proba(X_test)[:, idx]
-                    fpr, tpr, roc_thresholds = roc_curve(
-                        y_test, y_proba, pos_label=1
-                    )
+                    fpr, tpr, roc_thresholds = roc_curve(y_test, y_proba, pos_label=1)
                     precisions, recall, pr_thresholds = precision_recall_curve(
                         y_test, y_proba
                     )
