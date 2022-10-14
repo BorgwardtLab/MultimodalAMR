@@ -101,19 +101,17 @@ def main(args):
     prediction_pairs = {
         "Escherichia coli": [
             "Ciprofloxacin",
-            "Ceftriaxone",
             "Cefepime",
             "Tobramycin",
             "Piperacillin",
         ],
         "Klebsiella pneumoniae": [
             "Ciprofloxacin",
-            "Ceftriaxone",
             "Cefepime",
             "Meropenem",
             "Tobramycin",
         ],
-        "Staphylococcus aureus": ["Ciprofloxacin", "Fusidic acid", "Oxacillin"],
+        "Staphylococcus aureus": ["Ciprofloxacin", "Fusidic acid"],
     }
 
     for seed, (sp, dr) in tqdm(enumerate(experiments)):
