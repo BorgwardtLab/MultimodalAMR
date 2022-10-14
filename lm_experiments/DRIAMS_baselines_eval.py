@@ -71,9 +71,9 @@ def main(args):
         }
 
     elif args.model == "MLP":
-        model_template = MLPClassifier()
+        model_template = MLPClassifier(solver="lbfgs")
         distributions = {
-            "mlpclassifier__activation": ["tanh", "relu"],
+            "mlpclassifier__activation": ["relu"],
             "mlpclassifier__alpha": np.logspace(-4, -1, 11),
             "mlpclassifier__hidden_layer_sizes": [(2048), (1024, 64), (2048, 512, 32)],
         }
