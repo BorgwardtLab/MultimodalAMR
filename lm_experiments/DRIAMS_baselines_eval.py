@@ -27,8 +27,7 @@ import sys
 
 sys.path.insert(0, "../")
 
-
-from data_utils import DataSplitter, get_metrics
+from data_utils import DataSplitter, get_metrics, compute_metrics
 import os
 import pickle
 from os.path import join, exists
@@ -94,7 +93,12 @@ def main(args):
 
     print(f"Training {args.model} baseline")
 
-    combination_pairs = {
+    representative_pairs = {
+        "Escherichia coli": "Ceftriaxone",
+        "Klebsiella pneumoniae": "Ceftriaxone",
+        "Staphylococcus aureus": "Oxacillin",
+    }
+    prediction_pairs = {
         "Escherichia coli": [
             "Ciprofloxacin",
             "Ceftriaxone",
@@ -114,7 +118,7 @@ def main(args):
 
     for seed, (sp, dr) in tqdm(enumerate(experiments)):
 
-        if sp in combination_pairs.keys() and dr in combination_pairs[sp]:
+        if sp in representative_pairs.keys() and dr in representative_pairs[sp]:
 
             baseline_results = []
 
@@ -128,14 +132,7 @@ def main(args):
                 right_index=True,
             )
 
-            # Check that both classes are present and have more than min_samples_per_class
-            group_size = target_df.groupby("response").size()
-
-            if len(group_size) != 2 or np.any(group_size < args.min_samples_per_class):
-                continue
-
             print("Computing baseline for {} and {}".format(sp, dr))
-
             train_test_folds = dsplit.baseline_kfold_cv(target_df, cv=5)
 
             # Save splits to disk
@@ -186,42 +183,18 @@ def main(args):
                 model.fit(X_train, y_train)
                 y_pred = model.predict(X_test)
 
-                cm = confusion_matrix(y_test.values, y_pred)
-                tpr, tnr, acc, precision = get_metrics(cm)
-                f1 = f1_score(y_test.values, y_pred)
-                mcc = matthews_corrcoef(y_test.values, y_pred)
-                balanced_acc = balanced_accuracy_score(y_test.values, y_pred)
-
-                roc_auc = 0.5
-                auprc = 0
-
-                if hasattr(model, "predict_proba"):
-                    idx = np.where(model.classes_ == 1)[0]
-                    y_proba = model.predict_proba(X_test)[:, idx]
-                    fpr, tpr, roc_thresholds = roc_curve(y_test, y_proba, pos_label=1)
-                    precisions, recall, pr_thresholds = precision_recall_curve(
-                        y_test, y_proba
-                    )
-                    auprc = auc(recall, precisions)
-                    roc_auc = roc_auc_score(y_test.values, y_proba)
-
-                    # Produce ROC and PR curves to output
-                    with open(
-                        os.path.join(join(out_folder, f"{sp}_{dr}_pr.pkl")), "wb"
-                    ) as handle:
-                        pickle.dump(
-                            [precisions, recall, pr_thresholds],
-                            handle,
-                            protocol=pickle.HIGHEST_PROTOCOL,
-                        )
-                    with open(
-                        os.path.join(join(out_folder, f"{sp}_{dr}_roc.pkl")), "wb"
-                    ) as handle:
-                        pickle.dump(
-                            [fpr, tpr, roc_thresholds],
-                            handle,
-                            protocol=pickle.HIGHEST_PROTOCOL,
-                        )
+                (
+                    tpr,
+                    tnr,
+                    precision,
+                    acc,
+                    balanced_acc,
+                    f1,
+                    mcc,
+                    roc_auc,
+                    auprc,
+                    cm,
+                ) = compute_metrics(out_folder, sp, dr, model, X_test, y_test, y_pred)
 
                 split_result = {
                     "species": sp,
@@ -244,6 +217,80 @@ def main(args):
             sp = sp.replace(" ", "_")
             baseline_results.to_csv(join(out_folder, f"{sp}_{dr}_metrics.csv"))
 
+            for seed, (sp, dr) in tqdm(enumerate(experiments)):
+                # Use the best trained model to predict on all other sp dr combinations, and save results
+                if sp in prediction_pairs.keys() and dr in prediction_pairs[sp]:
+
+                    baseline_results = []
+
+                    target_df, _ = dsplit.baseline_selection(drug=dr, species=sp)
+
+                    # Align samples in targets and data
+                    target_df = pd.merge(
+                        target_df.set_index("sample_id")["response"],
+                        spectra_matrix,
+                        left_index=True,
+                        right_index=True,
+                    )
+
+                    print("Computing baseline for {} and {}".format(sp, dr))
+                    train_test_folds = dsplit.baseline_kfold_cv(target_df, cv=5)
+
+                    # Save splits to disk
+                    with open(
+                        os.path.join(join(out_folder, f"{sp}_{dr}_splits.pkl")), "wb"
+                    ) as handle:
+                        pickle.dump(
+                            train_test_folds, handle, protocol=pickle.HIGHEST_PROTOCOL
+                        )
+                    with open(
+                        os.path.join(join(out_folder, f"{sp}_{dr}_target.pkl")), "wb"
+                    ) as handle:
+                        pickle.dump(target_df, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+                    for n_fold, (_, test_data) in tqdm(enumerate(train_test_folds)):
+
+                        X_test = test_data.drop("response", axis=1)
+                        y_test = test_data["response"]
+
+                        y_pred = model.predict(X_test)
+
+                        (
+                            tpr,
+                            tnr,
+                            precision,
+                            acc,
+                            balanced_acc,
+                            f1,
+                            mcc,
+                            roc_auc,
+                            auprc,
+                            cm,
+                        ) = compute_metrics(
+                            out_folder, sp, dr, model, X_test, y_test, y_pred
+                        )
+
+                        split_result = {
+                            "species": sp,
+                            "drug": dr,
+                            "fold": n_fold,
+                            "precision": precision,
+                            "recall": tpr,
+                            "specificity": tnr,
+                            "accuracy": acc,
+                            "balanced_accuracy": balanced_acc,
+                            "f1": f1,
+                            "mcc": mcc,
+                            "roc_auc": roc_auc,
+                            "auprc": auprc,
+                            "cmatrix": list(cm.flatten()),
+                        }
+                        baseline_results.append(split_result)
+
+                    baseline_results = pd.DataFrame(baseline_results)
+                    sp = sp.replace(" ", "_")
+                    baseline_results.to_csv(join(out_folder, f"{sp}_{dr}_metrics.csv"))
+
     print("Analysis complete")
 
 
@@ -262,7 +309,7 @@ if __name__ == "__main__":
         "--spectra_matrix_path",
         help="Specifies where to find the current spectral matrix",
         type=str,
-        default="../data/DRIAMS-B/spectra_binned_6000_2018.csv",
+        default="../data/DRIAMS-B/spectra_binned_6000_reprocessed.csv",
     )
     parser.add_argument(
         "--output_folder",

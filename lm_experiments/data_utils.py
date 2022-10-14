@@ -1,7 +1,29 @@
 import pandas as pd
 import numpy as np
+import os
+from os.path import join, exists
+import pickle
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedKFold
+
+from sklearn.metrics import (
+    make_scorer,
+    recall_score,
+    accuracy_score,
+    precision_score,
+    confusion_matrix,
+    balanced_accuracy_score,
+)
+
+from sklearn.metrics import (
+    f1_score,
+    fbeta_score,
+    matthews_corrcoef,
+    roc_auc_score,
+    auc,
+    precision_recall_curve,
+    roc_curve,
+)
 
 
 def sum_solver(arr, target_sum):
@@ -168,22 +190,51 @@ def get_metrics(cm):
     FN = cm[1][0]
     TP = cm[1][1]
     FP = cm[0][1]
+
     # Sensitivity, hit rate, recall, or true positive rate
     TPR = TP / (TP + FN)
     # Specificity or true negative rate
     TNR = TN / (TN + FP)
     # Precision or positive predictive value
     PPV = TP / (TP + FP)
-    # # Negative predictive value
-    # NPV = TN / (TN + FN)
-    # # Fall out or false positive rate
-    # FPR = FP / (FP + TN)
-    # # False negative rate
-    # FNR = FN / (TP + FN)
-    # # False discovery rate
-    # FDR = FP / (TP + FP)
 
     # Overall accuracy
     ACC = (TP + TN) / (TP + FP + FN + TN)
 
     return TPR, TNR, ACC, PPV
+
+
+def compute_metrics(out_folder, sp, dr, model, X_test, y_test, y_pred):
+
+    cm = confusion_matrix(y_test.values, y_pred)
+    tpr, tnr, acc, precision = get_metrics(cm)
+    f1 = f1_score(y_test.values, y_pred)
+    mcc = matthews_corrcoef(y_test.values, y_pred)
+    balanced_acc = balanced_accuracy_score(y_test.values, y_pred)
+
+    roc_auc = 0.5
+    auprc = 0
+
+    if hasattr(model, "predict_proba"):
+        idx = np.where(model.classes_ == 1)[0]
+        y_proba = model.predict_proba(X_test)[:, idx]
+        fpr, tpr, roc_thresholds = roc_curve(y_test, y_proba, pos_label=1)
+        precisions, recall, pr_thresholds = precision_recall_curve(y_test, y_proba)
+        auprc = auc(recall, precisions)
+        roc_auc = roc_auc_score(y_test.values, y_proba)
+
+        # Produce ROC and PR curves to output
+        with open(os.path.join(join(out_folder, f"{sp}_{dr}_pr.pkl")), "wb") as handle:
+            pickle.dump(
+                [precisions, recall, pr_thresholds],
+                handle,
+                protocol=pickle.HIGHEST_PROTOCOL,
+            )
+        with open(os.path.join(join(out_folder, f"{sp}_{dr}_roc.pkl")), "wb") as handle:
+            pickle.dump(
+                [fpr, tpr, roc_thresholds],
+                handle,
+                protocol=pickle.HIGHEST_PROTOCOL,
+            )
+
+    return tpr, tnr, precision, acc, balanced_acc, f1, mcc, roc_auc, auprc, cm

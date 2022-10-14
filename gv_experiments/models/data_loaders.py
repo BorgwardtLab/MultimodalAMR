@@ -18,25 +18,18 @@ class ChEMBL_Dataset(Dataset):
         #     ]
         # ).float()
 
-    def __len__(self): 
+    def __len__(self):
         return len(self.molecule_chembl_id)
 
     def __getitem__(self, idx):
         chembl_mol_id = self.molecule_chembl_id[idx]
         fingerprint = self.fingerprints[idx]
-        fingerprint =  torch.tensor([int(v) for v in list(fingerprint)]).float()
+        fingerprint = torch.tensor([int(v) for v in list(fingerprint)]).float()
         return fingerprint, chembl_mol_id
 
 
-
 class DrugResistanceDataset(Dataset):
-    def __init__(
-        self,
-        long_table_df,
-        spectra_matrix,
-        drugs_df, 
-        samples_list
-    ):
+    def __init__(self, long_table_df, spectra_matrix, drugs_df, samples_list):
         """
         Dataset class to retrieve combinations of species-samples-drugs-drug resistance quadruplets
 
@@ -55,8 +48,7 @@ class DrugResistanceDataset(Dataset):
         self.idx2sample = {i: smp for i, smp in enumerate(samples_list)}
         self.sample2idx = {smp: i for i, smp in self.idx2sample.items()}
 
-        self.idx2drug = {i: d for i,
-                         d in enumerate(drugs_df.index)}
+        self.idx2drug = {i: d for i, d in enumerate(drugs_df.index)}
         self.drug2idx = {d: i for i, d in self.idx2drug.items()}
 
     def __len__(self):
@@ -74,18 +66,12 @@ class DrugResistanceDataset(Dataset):
         return species_idx, spectrum, fprint_tensor, response, dataset
 
 
-
 class DrugResistanceDataset_VAEEmbeddings(DrugResistanceDataset):
-    def __init__(
-        self,
-        long_table_df,
-        spectra_matrix,
-        drugs_embeddings, 
-        samples_list
-    ):
+    def __init__(self, long_table_df, spectra_matrix, drugs_embeddings, samples_list):
         super().__init__(long_table_df, spectra_matrix, drugs_embeddings, samples_list)
-        self.drugs_tensor = torch.from_numpy(drugs_embeddings.values/np.sum(drugs_embeddings.values)).float()
-
+        self.drugs_tensor = torch.from_numpy(
+            drugs_embeddings.values / np.sum(drugs_embeddings.values)
+        ).float()
 
 
 class DrugResistanceDataset_Fingerprints(DrugResistanceDataset):
@@ -93,18 +79,19 @@ class DrugResistanceDataset_Fingerprints(DrugResistanceDataset):
         self,
         long_table_df,
         spectra_matrix,
-        drugs_fingerprints, 
+        drugs_fingerprints,
         samples_list,
-        fingerprint_class="MACCS"
+        fingerprint_class="MACCS",
     ):
-        super().__init__(long_table_df, spectra_matrix, drugs_fingerprints, samples_list)
-        if fingerprint_class=="all":
-            fp_series = drugs_fingerprints.drop("morgan_512_fp", axis=1).apply(''.join, axis=1)
+        super().__init__(
+            long_table_df, spectra_matrix, drugs_fingerprints, samples_list
+        )
+        if fingerprint_class == "all":
+            fp_series = drugs_fingerprints.drop("morgan_512_fp", axis=1).apply(
+                "".join, axis=1
+            )
             self.drugs_tensor = torch.tensor(
-                [
-                    [int(v) for v in list(fp)]
-                    for i, fp in fp_series.items()
-                ]
+                [[int(v) for v in list(fp)] for i, fp in fp_series.items()]
             ).float()
         else:
             self.drugs_tensor = torch.tensor(
@@ -113,9 +100,6 @@ class DrugResistanceDataset_Fingerprints(DrugResistanceDataset):
                     for i, row in drugs_fingerprints.iterrows()
                 ]
             ).float()
-
-
-
 
 
 class SampleEmbDataset(Dataset):
@@ -143,8 +127,6 @@ class SampleEmbDataset(Dataset):
         spectrum = self.spectra_tensor[self.sample2idx[sample_id], :]
         species_idx = torch.LongTensor([self.species2idx[species]])
         return species_idx, spectrum
-
-
 
 
 # class DrugResistanceDataset_Fingerprints2(DrugResistanceDataset):
