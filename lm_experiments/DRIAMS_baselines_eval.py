@@ -132,6 +132,12 @@ def main(args):
                 right_index=True,
             )
 
+            # Check that both classes are present and have more than min_samples_per_class
+            group_size = target_df.groupby("response").size()
+
+            if len(group_size) != 2 or np.any(group_size < args.min_samples_per_class):
+                continue
+
             print("Computing baseline for {} and {}".format(sp, dr))
             train_test_folds = dsplit.baseline_kfold_cv(target_df, cv=5)
 
@@ -232,6 +238,14 @@ def main(args):
                         left_index=True,
                         right_index=True,
                     )
+
+                    # Check that both classes are present and have more than min_samples_per_class
+                    group_size = target_df.groupby("response").size()
+
+                    if len(group_size) != 2 or np.any(
+                        group_size < args.min_samples_per_class
+                    ):
+                        continue
 
                     print("Computing baseline for {} and {}".format(sp, dr))
                     train_test_folds = dsplit.baseline_kfold_cv(target_df, cv=5)

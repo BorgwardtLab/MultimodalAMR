@@ -33,5 +33,5 @@ rule train_baselines:
         "--spectra_matrix_path ../data/DRIAMS-{wildcards.dataset}/spectra_binned_6000_reprocessed.csv "
         "--output . "
         "--threshold 100 "
-        "--n_random_iter 100 "
+        "--n_random_iter 10 "
         "--min_samples_per_class 50"
