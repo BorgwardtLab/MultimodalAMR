@@ -18,7 +18,7 @@ import json
 from experiments.pl_experiment import Classifier_Experiment
 from data_split.data_utils import DataSplitter
 from models.data_loaders import DrugResistanceDataset_Fingerprints, SampleEmbDataset
-from models.classifier import MLP_Classifier
+from models.classifier import SpeciesBaseline_MLP_Classifier
 import sys
 
 
@@ -44,8 +44,10 @@ def main(args):
     dsplit = DataSplitter(driams_long_table, dataset=args.driams_dataset)
 
     species_list = sorted(dsplit.long_table["sample_id"].unique())
-    train_df, val_df, test_df = dsplit.random_train_val_test_split(val_size=0.1, test_size=0.2, random_state=args.seed)
 
+    trainval_df, test_df = dsplit.combination_train_test_split(dsplit.long_table, test_size=0.2, random_state=args.seed)
+    # train_df, val_df = dsplit.combination_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)
+    train_df, val_df = dsplit.baseline_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)
     test_df.to_csv(join(output_folder, "test_set.csv"), index=False)
     # sys.exit(0)
 
@@ -61,6 +63,7 @@ def main(args):
     species2idx = {s: i for i, s in idx2species.items()}
 
     config["n_unique_species"] = len(idx2species)
+    config["input_size"] = len(idx2species) + train_dset.drugs_tensor.shape[-1]
 
 
     # Save configuration
@@ -78,7 +81,7 @@ def main(args):
     test_loader = DataLoader(
         test_dset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
-    model = MLP_Classifier(config)
+    model = SpeciesBaseline_MLP_Classifier(config)
     experiment = Classifier_Experiment(config, model)
 
     if not exists(join(experiment_folder, "architecture.txt")):
@@ -121,25 +124,25 @@ if __name__=="__main__":
 
     parser = ArgumentParser()
 
-    parser.add_argument("--experiment_name", type=str, default="MLP_class")
-    parser.add_argument("--experiment_group", type=str, default="MLP_random_split_fprint_A")
+    parser.add_argument("--experiment_name", type=str, default="SpBase_class")
+    parser.add_argument("--experiment_group", type=str, default="random_split_fprint_B")
     parser.add_argument("--seed", type=int, default=0)
 
-    parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="A")
+    parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
     parser.add_argument("--driams_long_table", type=str,
                         default="../processed_data/DRIAMS_combined_long_table.csv")
     parser.add_argument("--spectra_matrix", type=str,
-                        default="../data/DRIAMS-A/spectra_binned_6000_all.npy")
+                        default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
     parser.add_argument("--drugs_df", type=str,
                         default="../processed_data/drug_fingerprints.csv")
 
 
-    parser.add_argument("--fingerprint_class", type=str, default="all", choices=["all", "MACCS", "morgan_512", "morgan_1024", "pubchem"])
+    parser.add_argument("--fingerprint_class", type=str, default="pubchem", choices=["all", "MACCS", "morgan_512", "morgan_1024", "pubchem"])
     # parser.add_argument("--fingerprint_size", type=int, default=167)
 
     parser.add_argument("--n_hidden_layers", type=int, default=5)
     parser.add_argument("--hidden_size", type=int, default=1024)
-    parser.add_argument("--input_size", type=int, default=8089)
+    parser.add_argument("--input_size", type=int, default=270)
 
 
     parser.add_argument("--n_epochs", type=int, default=50)

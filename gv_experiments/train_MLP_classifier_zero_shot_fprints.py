@@ -25,6 +25,8 @@ import sys
 def main(args):
     config = vars(args)
 
+    experiment_folder = join("outputs", args.experiment_group, args.experiment_name)
+
     output_folder = join("outputs", args.experiment_group, args.experiment_name, str(args.seed))
     if not exists(output_folder):
         os.makedirs(output_folder)
@@ -32,14 +34,13 @@ def main(args):
     metrics_folder = join("outputs", args.experiment_group, args.experiment_name, "metrics")
     if not exists(metrics_folder) and args.seed==0:
         os.makedirs(metrics_folder)
-
-    experiment_folder = join("outputs", args.experiment_group, args.experiment_name)
-    # if exists(join(output_folder, "embeddings", "drugs_embeddings.csv")):
-    #     sys.exit(0)
+    if exists(join(metrics_folder, "test_metrics_{}.json".format(args.seed))):
+        sys.exit(0)
 
     driams_long_table = pd.read_csv(args.driams_long_table)
     spectra_matrix = np.load(args.spectra_matrix)
     drugs_df = pd.read_csv(args.drugs_df, index_col=0)
+    driams_long_table = driams_long_table[driams_long_table["drug"].isin(drugs_df.index)]
     dsplit = DataSplitter(driams_long_table, dataset=args.driams_dataset)
 
     species_list = sorted(dsplit.long_table["sample_id"].unique())
@@ -51,7 +52,6 @@ def main(args):
     train_df, val_df = dsplit.baseline_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)
 
     test_df.to_csv(join(output_folder, "test_set.csv"), index=False)
-    # sys.exit(0)
 
 
     train_dset = DrugResistanceDataset_Fingerprints(train_df, spectra_matrix, drugs_df, species_list, fingerprint_class=config["fingerprint_class"])
@@ -129,11 +129,11 @@ if __name__=="__main__":
     parser.add_argument("--experiment_group", type=str, default="MLP_zero_shot")
     parser.add_argument("--seed", type=int, default=0)
 
-    parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
+    parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="C")
     parser.add_argument("--driams_long_table", type=str,
                         default="../processed_data/DRIAMS_combined_long_table.csv")
     parser.add_argument("--spectra_matrix", type=str,
-                        default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
+                        default="../data/DRIAMS-C/spectra_binned_6000_2018.npy")
     parser.add_argument("--drugs_df", type=str,
                         default="../processed_data/drug_fingerprints.csv")
 

@@ -49,7 +49,10 @@ def main(args):
     dsplit = DataSplitter(driams_long_table, dataset=args.driams_dataset)
 
     samples_list = sorted(dsplit.long_table["sample_id"].unique())
-    train_df, val_df, test_df = dsplit.random_train_val_test_split(val_size=0.1, test_size=0.2, random_state=args.seed)
+    trainval_df, test_df = dsplit.combination_train_test_split(dsplit.long_table, test_size=0.2, random_state=args.seed)
+    # train_df, val_df = dsplit.combination_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)
+    train_df, val_df = dsplit.baseline_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)
+
 
     train_dset = DrugResistanceDataset_Fingerprints(train_df, spectra_matrix, drugs_df, samples_list, fingerprint_class=config["fingerprint_class"])
     print(train_dset[0])
@@ -156,8 +159,8 @@ if __name__=="__main__":
 
     parser = ArgumentParser()
 
-    parser.add_argument("--experiment_name", type=str, default="test1")
-    parser.add_argument("--experiment_group", type=str, default="PCA_random_split")
+    parser.add_argument("--experiment_name", type=str, default="comp128")
+    parser.add_argument("--experiment_group", type=str, default="PCA_partition_split")
     parser.add_argument("--seed", type=int, default=0)
 
     parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")

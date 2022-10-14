@@ -34,12 +34,13 @@ def main(args):
         os.makedirs(metrics_folder)
 
     experiment_folder = join("outputs", args.experiment_group, args.experiment_name)
-    # if exists(join(output_folder, "embeddings", "drugs_embeddings.csv")):
-    #     sys.exit(0)
+    if exists(join(metrics_folder, "test_metrics_{}.json".format(args.seed))):
+        sys.exit(0)
 
     driams_long_table = pd.read_csv(args.driams_long_table)
     spectra_matrix = np.load(args.spectra_matrix)
     drugs_df = pd.read_csv(args.drugs_df, index_col=0)
+    driams_long_table = driams_long_table[driams_long_table["drug"].isin(drugs_df.index)]
     dsplit = DataSplitter(driams_long_table, dataset=args.driams_dataset)
 
     species_list = sorted(dsplit.long_table["sample_id"].unique())

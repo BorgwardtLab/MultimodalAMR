@@ -32,7 +32,9 @@ class DataSplitter():
     The second set of functions is used for additional tests such as zero-shot prediction.    
     """
     def __init__(self, long_table=None, dataset="B"):
-        self.long_table = long_table[long_table["dataset"]==dataset].reset_index(drop=True)
+        self.long_table = long_table
+        if dataset is not None:
+            self.long_table = long_table[long_table["dataset"]==dataset].reset_index(drop=True)
         self.dataset = dataset
         
     def __len__(self):
