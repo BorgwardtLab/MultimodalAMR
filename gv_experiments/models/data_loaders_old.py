@@ -8,33 +8,36 @@ from sklearn.model_selection import train_test_split
 from collections import defaultdict
 
 
-
-
-
-def train_valid_test_split(input_df, valid_size=0.2, test_size=0.2, zero_shot=False, random_state=42):
-    ''' Train - validation - test split stratified by species and response. 
-    As some species - response combinations might appear only once in the dataset, 
-    we include all these in the training set. 
-    '''
+def train_valid_test_split(
+    input_df, valid_size=0.2, test_size=0.2, zero_shot=False, random_state=42
+):
+    """Train - validation - test split stratified by species and response.
+    As some species - response combinations might appear only once in the dataset,
+    we include all these in the training set.
+    """
     df = input_df.copy()
     # aggreagate species and response for easier indexing
-    df['species_w_response'] = df[['species', 'response']].astype(str).agg('-'.join, axis=1)
-    
+    df["species_w_response"] = (
+        df[["species", "response"]].astype(str).agg("-".join, axis=1)
+    )
+
     # filter out categories with a single entry
-    single_entry_idx = [gr for gr, df_gr in df.groupby(['species_w_response']) if len(df_gr) == 1]
-    
-    df_single = df[df['species_w_response'].isin(single_entry_idx)]
-    df_filtered = df[~df['species_w_response'].isin(single_entry_idx)]
-    
+    single_entry_idx = [
+        gr for gr, df_gr in df.groupby(["species_w_response"]) if len(df_gr) == 1
+    ]
+
+    df_single = df[df["species_w_response"].isin(single_entry_idx)]
+    df_filtered = df[~df["species_w_response"].isin(single_entry_idx)]
+
     # get stratification variable
-    y_str = LabelEncoder().fit_transform(df_filtered['species_w_response'])
+    y_str = LabelEncoder().fit_transform(df_filtered["species_w_response"])
 
     # train + validation and test split
     remaining_idx, test_idx = train_test_split(
         np.arange(len(y_str)),
         test_size=test_size,
         stratify=y_str,
-        random_state=random_state
+        random_state=random_state,
     )
 
     df_single = df_single.drop("species_w_response", axis=1)
@@ -46,23 +49,34 @@ def train_valid_test_split(input_df, valid_size=0.2, test_size=0.2, zero_shot=Fa
             np.arange(len(y_str[remaining_idx])),
             test_size=valid_size,
             stratify=y_str[remaining_idx],
-            random_state=random_state
+            random_state=random_state,
         )
 
-        return pd.concat([df_single, df_filtered.iloc[train_idx,:]], axis=0), df_filtered.iloc[valid_idx, :], df_filtered.iloc[test_idx, :]
+        return (
+            pd.concat([df_single, df_filtered.iloc[train_idx, :]], axis=0),
+            df_filtered.iloc[valid_idx, :],
+            df_filtered.iloc[test_idx, :],
+        )
     else:
-        return pd.concat([df_single, df_filtered.iloc[remaining_idx,:]], axis=0), df_filtered.iloc[test_idx, :]
-    
+        return (
+            pd.concat([df_single, df_filtered.iloc[remaining_idx, :]], axis=0),
+            df_filtered.iloc[test_idx, :],
+        )
+
 
 def zero_shot_train_valid_test_split(df, drugs, valid_size=0.2, random_state=42):
-    ''' Train - validation - test split for zero-shot learning.
-    '''
+    """Train - validation - test split for zero-shot learning."""
     # select for testing based on list of drugs
-    df_test = df[df['drug'].isin(drugs)]
-    
+    df_test = df[df["drug"].isin(drugs)]
+
     # stratified train - validation split based on species and response
-    df_train, df_valid = train_valid_test_split(df[~df['drug'].isin(drugs)].copy(), valid_size=valid_size, random_state=random_state, zero_shot=True)
-    
+    df_train, df_valid = train_valid_test_split(
+        df[~df["drug"].isin(drugs)].copy(),
+        valid_size=valid_size,
+        random_state=random_state,
+        zero_shot=True,
+    )
+
     return df_train, df_valid, df_test
 
 
@@ -92,8 +106,7 @@ class DrugResistanceDataset(Dataset):
         self.spectra_tensor = torch.tensor(spectra_matrix).float()
 
         self.idx2phylo_species = {i: d for i, d in enumerate(phylogen_df.index)}
-        self.phylo_species2idx = {d: i for i,
-                                  d in self.idx2phylo_species.items()}
+        self.phylo_species2idx = {d: i for i, d in self.idx2phylo_species.items()}
         self.phylo_embeddings_tensor = torch.tensor(phylogen_df.values).float()
 
         sorted_species = sorted(long_table["species"].unique())
@@ -104,8 +117,7 @@ class DrugResistanceDataset(Dataset):
         self.idx2sample = {i: smp for i, smp in enumerate(sorted_samples)}
         self.sample2idx = {smp: i for i, smp in self.idx2sample.items()}
 
-        self.idx2drug = {i: d for i,
-                         d in drugs_fingerprints["drug"].iteritems()}
+        self.idx2drug = {i: d for i, d in drugs_fingerprints["drug"].iteritems()}
         self.drug2idx = {d: i for i, d in self.idx2drug.items()}
 
         self.drugs_tensor = torch.tensor(
@@ -117,7 +129,8 @@ class DrugResistanceDataset(Dataset):
 
         if split is not None:
             train_table, val_table, test_table = train_valid_test_split(
-                self.long_table, random_state=random_state)
+                self.long_table, random_state=random_state
+            )
             if split == "training":
                 self.long_table = train_table
             elif split == "validation":
@@ -153,8 +166,7 @@ class SampleEmbDataset(Dataset):
         self.spectra_tensor = torch.tensor(spectra_matrix).float()
 
         self.idx2phylo_species = {i: d for i, d in enumerate(phylogen_df.index)}
-        self.phylo_species2idx = {d: i for i,
-                                  d in self.idx2phylo_species.items()}
+        self.phylo_species2idx = {d: i for i, d in self.idx2phylo_species.items()}
         self.phylo_embeddings_tensor = torch.tensor(phylogen_df.values).float()
 
         sorted_species = sorted(long_table["species"].unique())
@@ -184,17 +196,14 @@ class SampleEmbDataset(Dataset):
         return species_idx, phylo_species_embedding, spectrum
 
 
-
-
 class DrugEmbDataset(Dataset):
     def __init__(
-            self,
-            drugs_fingerprints,
-            fingerprint_class="MACCS",
-        ):
+        self,
+        drugs_fingerprints,
+        fingerprint_class="MACCS",
+    ):
 
-        self.idx2drug = {i: d for i,
-                         d in drugs_fingerprints["drug"].iteritems()}
+        self.idx2drug = {i: d for i, d in drugs_fingerprints["drug"].iteritems()}
         self.drug2idx = {d: i for i, d in self.idx2drug.items()}
 
         self.drugs_tensor = torch.tensor(
@@ -206,11 +215,10 @@ class DrugEmbDataset(Dataset):
 
     def __len__(self):
         return len(self.idx2drug)
-    
+
     def __getitem__(self, idx):
         fprint_tensor = self.drugs_tensor[idx]
         return fprint_tensor
-
 
 
 class ZeroShotDrugDataset(DrugResistanceDataset):
@@ -240,8 +248,7 @@ class ZeroShotDrugDataset(DrugResistanceDataset):
         self.spectra_tensor = torch.tensor(spectra_matrix).float()
 
         self.idx2phylo_species = {i: d for i, d in enumerate(phylogen_df.index)}
-        self.phylo_species2idx = {d: i for i,
-                                  d in self.idx2phylo_species.items()}
+        self.phylo_species2idx = {d: i for i, d in self.idx2phylo_species.items()}
         self.phylo_embeddings_tensor = torch.tensor(phylogen_df.values).float()
 
         sorted_species = sorted(long_table["species"].unique())
@@ -252,8 +259,7 @@ class ZeroShotDrugDataset(DrugResistanceDataset):
         self.idx2sample = {i: smp for i, smp in enumerate(sorted_samples)}
         self.sample2idx = {smp: i for i, smp in self.idx2sample.items()}
 
-        self.idx2drug = {i: d for i,
-                         d in drugs_fingerprints["drug"].iteritems()}
+        self.idx2drug = {i: d for i, d in drugs_fingerprints["drug"].iteritems()}
         self.drug2idx = {d: i for i, d in self.idx2drug.items()}
 
         self.drugs_tensor = torch.tensor(
@@ -265,7 +271,8 @@ class ZeroShotDrugDataset(DrugResistanceDataset):
 
         if split is not None:
             train_table, val_table, test_table = zero_shot_train_valid_test_split(
-                self.long_table, zs_drugs, random_state=random_state)
+                self.long_table, zs_drugs, random_state=random_state
+            )
             if split == "training":
                 self.long_table = train_table
             elif split == "validation":

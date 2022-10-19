@@ -72,7 +72,7 @@ from torch.autograd import Function
 
 def weights_init(m):
     classname = m.__class__.__name__
-    if classname.find('Linear') != -1:
+    if classname.find("Linear") != -1:
         try:
             nn.init.xavier_uniform_(m.weight.data)
             m.bias.data.fill_(0)
@@ -93,7 +93,7 @@ class VectorQuantizedVAE(nn.Module):
     def __init__(self, input_dim, emb_dim, K=512, comb_size=4, committment_cost=0.25):
         super().__init__()
         self.comb_size = comb_size
-        self.code_dim = emb_dim//comb_size
+        self.code_dim = emb_dim // comb_size
         self.encoder = nn.Sequential(
             nn.Linear(input_dim, emb_dim),
             nn.BatchNorm1d(emb_dim),
@@ -101,7 +101,7 @@ class VectorQuantizedVAE(nn.Module):
             nn.Linear(emb_dim, emb_dim),
             ResBlock(emb_dim),
             ResBlock(emb_dim),
-            ViewLayer([-1, self.comb_size, self.code_dim])
+            ViewLayer([-1, self.comb_size, self.code_dim]),
         )
 
         self.codebook = VectorQuantizer(K, self.code_dim, committment_cost)
@@ -111,7 +111,7 @@ class VectorQuantizedVAE(nn.Module):
             ResBlock(emb_dim),
             ResBlock(emb_dim),
             nn.Linear(emb_dim, input_dim),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
         self.apply(weights_init)
@@ -126,7 +126,8 @@ class VectorQuantizedVAE(nn.Module):
     def decode(self, latents):
         batch_size = latents.size(0)
         z_q_x = self.codebook.embedding(latents).view(
-            batch_size, -1)  # .permute(0, 3, 1, 2) (B, D, H, W)
+            batch_size, -1
+        )  # .permute(0, 3, 1, 2) (B, D, H, W)
         x_tilde = self.decoder(z_q_x)
         return x_tilde
 
@@ -146,10 +147,10 @@ class VectorQuantizer(nn.Module):
         self._embedding_dim = embedding_dim
         self._num_embeddings = num_embeddings
 
-        self._embedding = nn.Embedding(
-            self._num_embeddings, self._embedding_dim)
-        self._embedding.weight.data.uniform_(-1 /
-                                             self._num_embeddings, 1/self._num_embeddings)
+        self._embedding = nn.Embedding(self._num_embeddings, self._embedding_dim)
+        self._embedding.weight.data.uniform_(
+            -1 / self._num_embeddings, 1 / self._num_embeddings
+        )
         self._commitment_cost = commitment_cost
 
     def forward(self, inputs):
@@ -159,19 +160,21 @@ class VectorQuantizer(nn.Module):
         flat_input = inputs.view(-1, self._embedding_dim)
 
         # Calculate distances
-        distances = (torch.sum(flat_input**2, dim=1, keepdim=True)
-                     + torch.sum(self._embedding.weight**2, dim=1)
-                     - 2 * torch.matmul(flat_input, self._embedding.weight.t()))
+        distances = (
+            torch.sum(flat_input**2, dim=1, keepdim=True)
+            + torch.sum(self._embedding.weight**2, dim=1)
+            - 2 * torch.matmul(flat_input, self._embedding.weight.t())
+        )
 
         # Encoding
         encoding_indices = torch.argmin(distances, dim=1).unsqueeze(1)
         encodings = torch.zeros(
-            encoding_indices.shape[0], self._num_embeddings, device=inputs.device)
+            encoding_indices.shape[0], self._num_embeddings, device=inputs.device
+        )
         encodings.scatter_(1, encoding_indices, 1)
 
         # Quantize and unflatten
-        quantized = torch.matmul(
-            encodings, self._embedding.weight).view(input_shape)
+        quantized = torch.matmul(encodings, self._embedding.weight).view(input_shape)
 
         # Loss
         e_latent_loss = F.mse_loss(quantized.detach(), inputs)
@@ -180,10 +183,10 @@ class VectorQuantizer(nn.Module):
 
         quantized = inputs + (quantized - inputs).detach()
         avg_probs = torch.mean(encodings, dim=0)
-        perplexity = torch.exp(-torch.sum(avg_probs *
-                               torch.log(avg_probs + 1e-10)))
+        perplexity = torch.exp(-torch.sum(avg_probs * torch.log(avg_probs + 1e-10)))
 
         return loss, quantized, perplexity, encodings
+
 
 # class VectorQuantizerEMA(nn.Module):
 #     def __init__(self, num_embeddings, embedding_dim, commitment_cost, decay, epsilon=1e-5):
@@ -328,10 +331,7 @@ class ResBlock(nn.Module):
     def __init__(self, dim, p_dropout=0.2):
         super().__init__()
         self.block = nn.Sequential(
-            nn.ReLU(),
-            nn.Linear(dim, dim),
-            nn.Dropout(p_dropout),
-            nn.BatchNorm1d(dim)
+            nn.ReLU(), nn.Linear(dim, dim), nn.Dropout(p_dropout), nn.BatchNorm1d(dim)
         )
 
     def forward(self, x):
