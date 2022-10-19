@@ -18,6 +18,7 @@ class Classifier_Experiment(pl.LightningModule):
         self.model = model
         self.loss_function = nn.BCEWithLogitsLoss()
         self.threshold = config.get("threshold", 0.5)
+        self.test_predictions = []
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
@@ -47,10 +48,10 @@ class Classifier_Experiment(pl.LightningModule):
             "precision": precision_score(response_classes, predicted_classes, zero_division=0),
             "recall": recall_score(response_classes, predicted_classes, zero_division=0)
         }
-        return loss, logs
+        return loss, logs, predictions
 
     def training_step(self, batch, batch_idx):
-        loss, logs = self._step(batch)
+        loss, logs, predictions = self._step(batch)
         self.log("train_loss", loss, on_step=True, on_epoch=True,
                  prog_bar=True, logger=True, batch_size=self.batch_size)
         for k, v in logs.items():
@@ -59,7 +60,7 @@ class Classifier_Experiment(pl.LightningModule):
         return logs
 
     def validation_step(self, batch, batch_idx):
-        loss, logs = self._step(batch)
+        loss, logs, predictions = self._step(batch)
         self.log("val_loss", loss, on_step=True, on_epoch=True,
                  prog_bar=True, logger=True, batch_size=self.batch_size)
         for k, v in logs.items():
@@ -69,7 +70,10 @@ class Classifier_Experiment(pl.LightningModule):
 
 
     def test_step(self, batch, batch_idx):
-        loss, logs = self._step(batch)
+        response = batch[-2]
+        loss, logs, predictions = self._step(batch)
+        predictions = predictions.flatten().tolist()
+        self.test_predictions.extend(predictions)
         self.log("test_loss", loss, on_step=False, on_epoch=True, batch_size=self.batch_size)
         for k, v in logs.items():
             self.log("test_"+k, v, on_step=False, on_epoch=True, batch_size=self.batch_size)

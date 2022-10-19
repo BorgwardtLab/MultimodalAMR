@@ -172,7 +172,7 @@ if __name__=="__main__":
 
 
     parser.add_argument("--fingerprint_class", type=str, default="all", choices=["all", "MACCS", "morgan_512", "morgan_1024", "pubchem"])
-    parser.add_argument("--n_components", type=int, default=128)
+    parser.add_argument("--n_components", type=int, default=32)
 
     args = parser.parse_args()
     for i in range(10):

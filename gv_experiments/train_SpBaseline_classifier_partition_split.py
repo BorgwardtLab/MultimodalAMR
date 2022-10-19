@@ -44,7 +44,7 @@ def main(args):
     dsplit = DataSplitter(driams_long_table, dataset=args.driams_dataset)
 
     species_list = sorted(dsplit.long_table["sample_id"].unique())
-
+    
     trainval_df, test_df = dsplit.combination_train_test_split(dsplit.long_table, test_size=0.2, random_state=args.seed)
     # train_df, val_df = dsplit.combination_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)
     train_df, val_df = dsplit.baseline_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)

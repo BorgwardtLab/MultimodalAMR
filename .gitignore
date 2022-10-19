@@ -6,9 +6,8 @@ job.sh
 job.sub
 *.sh
 *.sub
-
-
-
+gv_experiments/*.ipynb
+gv_experiments/OLD
 
 
 
