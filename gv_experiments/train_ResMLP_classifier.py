@@ -129,8 +129,8 @@ if __name__=="__main__":
 
     parser = ArgumentParser()
 
-    parser.add_argument("--experiment_name", type=str, default="MLP_class")
-    parser.add_argument("--experiment_group", type=str, default="MLP_random_split_fprint")
+    parser.add_argument("--experiment_name", type=str, default="myExperiment")
+    parser.add_argument("--experiment_group", type=str, default="ResMLP")
     parser.add_argument("--split_type", type=str, default="random", choices=["random", "partitioned", "drugs_zero_shot"])
     parser.add_argument("--seed", type=int, default=0)
 
