@@ -1,9 +1,10 @@
 import sys
 sys.path.insert(0, "..")
-# sys.path.insert(0, "../data_split")
+sys.path.insert(0, "../data_split")
+import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 import numpy as np
-import os
 from os.path import join, exists
 import pandas as pd
 import torch
@@ -16,10 +17,15 @@ from tqdm import tqdm
 from argparse import ArgumentParser
 import json
 from experiments.pl_experiment import Classifier_Experiment
+import itertools
+
 from data_split.data_utils import DataSplitter
 from models.data_loaders import DrugResistanceDataset_Fingerprints, SampleEmbDataset
-from models.classifier import MLP_Classifier
+from models.classifier import Residual_AMR_Classifier
 import sys
+
+TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "partitioned"], np.arange(5), [0]))
+
 
 
 
@@ -87,9 +93,9 @@ def main(args):
         val_dset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
     test_loader = DataLoader(
         test_dset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
-
+    
     # Instantiate model and pytorch lightning experiment
-    model = MLP_Classifier(config)
+    model = Residual_AMR_Classifier(config)
     experiment = Classifier_Experiment(config, model)
 
     # Save summary of the model architecture
@@ -110,8 +116,9 @@ def main(args):
 
     # Train model
     print("Training..")
-    trainer = pl.Trainer(devices="auto", accelerator="auto", default_root_dir=output_folder, max_epochs=args.n_epochs, callbacks=callbacks,
-                         logger=tb_logger, log_every_n_steps=3
+    trainer = pl.Trainer(devices="auto", accelerator="auto", 
+        default_root_dir=output_folder, max_epochs=args.n_epochs#, callbacks=callbacks,
+                        #  logger=tb_logger, log_every_n_steps=3
                          )
     trainer.fit(experiment, train_dataloaders=train_loader,
                 val_dataloaders=val_loader)
@@ -122,7 +129,12 @@ def main(args):
     test_results = trainer.test(ckpt_path="best", dataloaders=test_loader)
     with open(join(metrics_folder, "test_metrics_{}.json".format(args.seed)), "w") as f:
         json.dump(test_results[0], f, indent=2)
+
+    test_df["Predictions"] = experiment.test_predictions
+    test_df.to_csv(join(output_folder, "test_set.csv"), index=False)
     print("Testing complete")
+
+
 
 
 
@@ -130,33 +142,62 @@ if __name__=="__main__":
 
     parser = ArgumentParser()
 
-    parser.add_argument("--experiment_name", type=str, default="myExperiment")
-    parser.add_argument("--experiment_group", type=str, default="ResMLP")
+    parser.add_argument("--experiment_name", type=str, default="DRIAMS")
+    parser.add_argument("--experiment_group", type=str, default="ResAMR")
     parser.add_argument("--split_type", type=str, default="random", choices=["random", "partitioned", "drugs_zero_shot"])
-    parser.add_argument("--seed", type=int, default=0)
 
-    parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
+
+    parser.add_argument("--training_setup", type=int, default=0)
+    # parser.add_argument("--seed", type=int, default=0)
+
+    # parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
     parser.add_argument("--driams_long_table", type=str,
                         default="../processed_data/DRIAMS_combined_long_table.csv")
-    parser.add_argument("--spectra_matrix", type=str,
-                        default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
+    # parser.add_argument("--spectra_matrix", type=str,
+    #                     default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
     parser.add_argument("--drugs_df", type=str,
                         default="../processed_data/drug_fingerprints.csv")
 
+    # parser.add_argument("--species_embedding_dim", type=int, default=0) #?
+    parser.add_argument("--conv_out_size", type=int, default=64)
+    parser.add_argument("--sample_embedding_dim", type=int, default=64)
+    parser.add_argument("--drug_embedding_dim", type=int, default=64)
+    
 
-    parser.add_argument("--fingerprint_class", type=str, default="all", choices=["all", "MACCS", "morgan_512", "morgan_1024", "pubchem"])
+    parser.add_argument("--drug_emb_type", type=str, default="fingerprint", choices=["fingerprint", "vae_embedding"])
+    parser.add_argument("--fingerprint_class", type=str, default="morgan_1024", choices=["all", "MACCS", "morgan_512", "morgan_1024", "pubchem"])
+    parser.add_argument("--fingerprint_size", type=int, default=1024)
+
+    
 
     parser.add_argument("--n_hidden_layers", type=int, default=5)
-    parser.add_argument("--hidden_size", type=int, default=1024)
-    parser.add_argument("--input_size", type=int, default=8089)
+    # parser.add_argument("--hidden_size", type=int, default=1024)
+    # parser.add_argument("--input_size", type=int, default=8089)
 
 
-    parser.add_argument("--n_epochs", type=int, default=50)
-    parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--patience", type=int, default=10)
-    parser.add_argument("--learning_rate", type=float, default=0.001)
+    parser.add_argument("--n_epochs", type=int, default=500)
+    parser.add_argument("--batch_size", type=int, default=512)
+    parser.add_argument("--patience", type=int, default=50)
+    parser.add_argument("--learning_rate", type=float, default=0.003)
     parser.add_argument("--weight_decay", type=float, default=1e-5)
 
     args = parser.parse_args()
     args.num_workers = os.cpu_count()
+
+
+
+    dataset, split_type, seed, species_emb_dim = TRAINING_SETUPS[args.training_setup]
+    args.seed = seed
+    args.driams_dataset = dataset
+    args.split_type = split_type
+    args.species_embedding_dim = species_emb_dim
+    
+    args.experiment_name = args.experiment_name + f"_DRIAMS-{dataset}_{split_type}_sp{species_emb_dim}"
+
+
+    if dataset=="A":
+        args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
+    else:
+        args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
+
     main(args)

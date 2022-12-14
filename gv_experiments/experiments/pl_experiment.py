@@ -6,7 +6,6 @@ import pytorch_lightning as pl
 from tqdm import tqdm
 from sklearn.metrics import (
     matthews_corrcoef,
-    accuracy_score,
     balanced_accuracy_score,
     f1_score,
     average_precision_score,
@@ -41,9 +40,8 @@ class Classifier_Experiment(pl.LightningModule):
         # species_idx, spectrum, fprint_tensor, response, dataset = batch
         response = batch[-2]
         logits = self.model(batch)
-        loss = self.loss_function(logits, response.view(-1, 1))
-
-        # matthews_corrcoef, accuracy_score, balanced_accuracy_score, f1_score, average_precision_score
+        loss = self.loss_function(logits.view(-1, 1), response.view(-1, 1))
+        predictions = logits
         predictions = torch.sigmoid(logits)
         predicted_classes = (predictions >= self.threshold).int().cpu().numpy()
         response_classes = response.cpu().numpy()
@@ -54,7 +52,7 @@ class Classifier_Experiment(pl.LightningModule):
             ),
             "f1": f1_score(response_classes, predicted_classes, zero_division=0),
             "AUPRC": average_precision_score(
-                response_classes, predictions.cpu().detach().numpy()
+                response_classes, logits.cpu().detach().numpy()
             ),
             "precision": precision_score(
                 response_classes, predicted_classes, zero_division=0
@@ -94,7 +92,7 @@ class Classifier_Experiment(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         response = batch[-2]
         loss, logs, predictions = self._step(batch)
-        predictions = predictions.flatten().tolist()
+        predictions = (predictions >= self.threshold).cpu().int().cpu().flatten().tolist()
         self.test_predictions.extend(predictions)
         self.log("test_loss", loss, on_step=False, on_epoch=True, batch_size=self.batch_size)
         for k, v in logs.items():

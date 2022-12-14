@@ -179,15 +179,26 @@ class Residual_AMR_Classifier(nn.Module):
         self.config = config
 
         # Species embedding
-        self.species_emd = nn.Embedding(
-            config["n_unique_species"], config["species_embedding_dim"]
-        )
+        if config["species_embedding_dim"]>0:
+            self.species_emd = nn.Embedding(
+                config["n_unique_species"], config["species_embedding_dim"]
+            )
+        else:
+            self.species_emd = None
 
         # Sample embedding
-        self.sample_emb = nn.Linear(
-            config["conv_out_size"] + config["species_embedding_dim"],
-            config["sample_embedding_dim"],
-        )
+        if config["species_embedding_dim"]==0 and config["conv_out_size"]==config["sample_embedding_dim"]:
+            self.sample_emb = nn.Identity()
+        elif config["species_embedding_dim"]==0:
+            self.sample_emb = nn.Linear(
+                config["conv_out_size"],
+                config["sample_embedding_dim"],
+            )
+        else:
+            self.sample_emb = nn.Linear(
+                config["conv_out_size"] + config["species_embedding_dim"],
+                config["sample_embedding_dim"],
+            )
 
         # Maldi-tof spectrum embedding
         self.spectrum_emb = Conv1d_Block(output_dim=config["conv_out_size"])
@@ -212,9 +223,12 @@ class Residual_AMR_Classifier(nn.Module):
         return self.spectrum_emb(torch.unsqueeze(x_spectrum, dim=1))
 
     def embed_sample(self, species_idx, spectrum_embedding):
-        species_embedding = self.species_emd(species_idx.view(-1))
-        cat_emb = torch.cat([species_embedding, spectrum_embedding], dim=1)
-        return self.sample_emb(cat_emb)
+        if self.species_emd is not None:
+            species_embedding = self.species_emd(species_idx.view(-1))
+            cat_emb = torch.cat([species_embedding, spectrum_embedding], dim=1)
+            return self.sample_emb(cat_emb)
+        else:
+            return self.sample_emb(spectrum_embedding)
 
     def forward(self, batch):
         species_idx, x_spectrum, dr_tensor, response, dataset = batch
