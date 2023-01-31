@@ -123,52 +123,52 @@ class SpeciesBaseline_MLP_Classifier(MLP_Classifier):
         )
 
 
-class AMR_Classifier_noSP(nn.Module):
-    """Overall model definition."""
+# class AMR_Classifier_noSP(nn.Module):
+#     """Overall model definition."""
 
-    def __init__(self, config):
-        super().__init__()
-        self.config = config
+#     def __init__(self, config):
+#         super().__init__()
+#         self.config = config
 
-        self.sample_emb = ResMLP(
-            config["sample_hidden_layers"],
-            config["conv_out_size"],
-            config["sample_embedding_dim"],
-            p_dropout=0.2,
-        )
+#         self.sample_emb = ResMLP(
+#             config["sample_hidden_layers"],
+#             config["conv_out_size"],
+#             config["sample_embedding_dim"],
+#             p_dropout=0.2,
+#         )
 
-        # Maldi-tof spectrum embedding
-        self.spectrum_emb = Conv1d_Block(output_dim=config["conv_out_size"])
+#         # Maldi-tof spectrum embedding
+#         self.spectrum_emb = Conv1d_Block(output_dim=config["conv_out_size"])
 
-        # Drugs layers
-        if config["drug_emb_type"] == "vae_embedding":
-            self.drug_emb = nn.Identity()
-        elif config["drug_emb_type"] == "fingerprint":
-            self.drug_emb = nn.Sequential(
-                nn.Linear(config["fingerprint_size"], config["drug_hidden_dim"]),
-                ResMLP(
-                    config["drug_hidden_layers"],
-                    config["drug_hidden_dim"],
-                    config["drug_embedding_dim"],
-                    p_dropout=0.2,
-                ),
-            )
+#         # Drugs layers
+#         if config["drug_emb_type"] == "vae_embedding":
+#             self.drug_emb = nn.Identity()
+#         elif config["drug_emb_type"] == "fingerprint":
+#             self.drug_emb = nn.Sequential(
+#                 nn.Linear(config["fingerprint_size"], config["drug_hidden_dim"]),
+#                 ResMLP(
+#                     config["drug_hidden_layers"],
+#                     config["drug_hidden_dim"],
+#                     config["drug_embedding_dim"],
+#                     p_dropout=0.2,
+#                 ),
+#             )
 
-        # Output layer/operation
-        # self.out = nn.CosineSimilarity(dim=1, eps=1e-6)
-        self.out = nn.Linear(
-            config["sample_embedding_dim"] + config["drug_embedding_dim"], 1
-        )
+#         # Output layer/operation
+#         # self.out = nn.CosineSimilarity(dim=1, eps=1e-6)
+#         self.out = nn.Linear(
+#             config["sample_embedding_dim"] + config["drug_embedding_dim"], 1
+#         )
 
-    def embed_spectrum(self, x_spectrum):
-        return self.spectrum_emb(torch.unsqueeze(x_spectrum, dim=1))
+#     def embed_spectrum(self, x_spectrum):
+#         return self.spectrum_emb(torch.unsqueeze(x_spectrum, dim=1))
 
-    def forward(self, batch):
-        species_idx, x_spectrum, dr_tensor, response, dataset = batch
-        spectrum_embedding = self.embed_spectrum(x_spectrum)
-        sample_emb = self.sample_emb(spectrum_embedding)
-        dr_emb = self.drug_emb(dr_tensor)
-        return self.out(torch.cat([dr_emb, sample_emb], dim=1))
+#     def forward(self, batch):
+#         species_idx, x_spectrum, dr_tensor, response, dataset = batch
+#         spectrum_embedding = self.embed_spectrum(x_spectrum)
+#         sample_emb = self.sample_emb(spectrum_embedding)
+#         dr_emb = self.drug_emb(dr_tensor)
+#         return self.out(torch.cat([dr_emb, sample_emb], dim=1))
 
 
 class Residual_AMR_Classifier(nn.Module):
@@ -201,7 +201,8 @@ class Residual_AMR_Classifier(nn.Module):
             )
 
         # Maldi-tof spectrum embedding
-        self.spectrum_emb = Conv1d_Block(output_dim=config["conv_out_size"])
+        # self.spectrum_emb = Conv1d_Block(output_dim=config["conv_out_size"])
+        self.spectrum_emb = nn.Linear(6000 ,config["conv_out_size"])
 
         # Drugs layers
         if config["drug_emb_type"] == "vae_embedding":
@@ -220,7 +221,8 @@ class Residual_AMR_Classifier(nn.Module):
         )
 
     def embed_spectrum(self, x_spectrum):
-        return self.spectrum_emb(torch.unsqueeze(x_spectrum, dim=1))
+        # return self.spectrum_emb(torch.unsqueeze(x_spectrum, dim=1))
+        return self.spectrum_emb(x_spectrum)
 
     def embed_sample(self, species_idx, spectrum_embedding):
         if self.species_emd is not None:
@@ -233,6 +235,25 @@ class Residual_AMR_Classifier(nn.Module):
     def forward(self, batch):
         species_idx, x_spectrum, dr_tensor, response, dataset = batch
         spectrum_embedding = self.embed_spectrum(x_spectrum)
+        sample_emb = self.embed_sample(species_idx, spectrum_embedding)
+        dr_emb = self.drug_emb(dr_tensor)
+        return self.net(torch.cat([dr_emb, sample_emb], dim=1))
+
+
+
+class SpeciesBaseline_ResAMR_Classifier(Residual_AMR_Classifier):
+    """Overall model definition."""
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.n_species = config["n_unique_species"]
+        self.spectrum_emb = nn.Linear(self.n_species ,config["conv_out_size"])
+
+
+    def forward(self, batch):
+        species_idx, x_spectrum, dr_tensor, response, dataset = batch
+        species_tensor = F.one_hot(species_idx, num_classes=self.n_species).squeeze().float()
+        spectrum_embedding = self.embed_spectrum(species_tensor)
         sample_emb = self.embed_sample(species_idx, spectrum_embedding)
         dr_emb = self.drug_emb(dr_tensor)
         return self.net(torch.cat([dr_emb, sample_emb], dim=1))

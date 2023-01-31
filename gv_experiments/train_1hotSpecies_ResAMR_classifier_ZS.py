@@ -16,17 +16,20 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from tqdm import tqdm
 from argparse import ArgumentParser
 import json
-from experiments.pl_experiment import Classifier_Experiment
+from experiments.pl_experiment import Classifier_Experiment_TestMetrics
 import itertools
 
 from data_split.data_utils import DataSplitter
 from models.data_loaders import DrugResistanceDataset_Fingerprints, SampleEmbDataset
-from models.classifier import Residual_AMR_Classifier
+from models.classifier import SpeciesBaseline_ResAMR_Classifier
 import sys
 
 # TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "partitioned"], np.arange(5), [0, 64]))
-TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "partitioned"], np.arange(10), [0]))
-# TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["drugs_zero_shot"], np.arange(60), [0]))
+
+# TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "partitioned"], np.arange(10))) #, [0]
+TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["drugs_zero_shot"], np.arange(60)))
+
+
 # TRAINING_SETUPS = list(itertools.product(['B'], ["random"], np.arange(5), [0]))
 
 
@@ -105,8 +108,8 @@ def main(args):
         test_dset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
     
     # Instantiate model and pytorch lightning experiment
-    model = Residual_AMR_Classifier(config)
-    experiment = Classifier_Experiment(config, model)
+    model = SpeciesBaseline_ResAMR_Classifier(config)
+    experiment = Classifier_Experiment_TestMetrics(config, model)
 
     # Save summary of the model architecture
     if not exists(join(experiment_folder, "architecture.txt")):
@@ -133,7 +136,7 @@ def main(args):
     trainer = pl.Trainer(devices="auto", accelerator="auto", 
         default_root_dir=output_folder, max_epochs=args.n_epochs,#, callbacks=callbacks,
                         #  logger=tb_logger, log_every_n_steps=3
-                        limit_train_batches=6
+                        # limit_train_batches=6
                          )
     trainer.fit(experiment, train_dataloaders=train_loader,
                 val_dataloaders=val_loader)
@@ -146,7 +149,7 @@ def main(args):
         json.dump(test_results[0], f, indent=2)
 
     test_df["Predictions"] = experiment.test_predictions
-    test_df.to_csv(join(output_folder, "test_set.csv"), index=False)
+    test_df.to_csv(join(results_folder, "test_set_{}.csv".format(seed)), index=False)
     print("Testing complete")
 
 
@@ -157,8 +160,8 @@ if __name__=="__main__":
 
     parser = ArgumentParser()
 
-    parser.add_argument("--experiment_name", type=str, default="MissingComb")
-    parser.add_argument("--experiment_group", type=str, default="ResAMR")
+    parser.add_argument("--experiment_name", type=str, default="testt3")
+    parser.add_argument("--experiment_group", type=str, default="Species1hot_ResAMR")
     parser.add_argument("--split_type", type=str, default="random", choices=["random", "partitioned", "drugs_zero_shot"])
 
 
@@ -190,7 +193,7 @@ if __name__=="__main__":
     # parser.add_argument("--input_size", type=int, default=8089)
 
 
-    parser.add_argument("--n_epochs", type=int, default=500)
+    parser.add_argument("--n_epochs", type=int, default=1)
     parser.add_argument("--batch_size", type=int, default=512)
     parser.add_argument("--patience", type=int, default=50)
     parser.add_argument("--learning_rate", type=float, default=0.003)
@@ -201,8 +204,8 @@ if __name__=="__main__":
 
 
 
-    dataset, split_type, seed, species_emb_dim = TRAINING_SETUPS[args.training_setup]
-    
+    dataset, split_type, seed = TRAINING_SETUPS[args.training_setup]
+    species_emb_dim = 0
     args.seed = seed
     args.driams_dataset = dataset
     args.split_type = split_type
@@ -213,11 +216,14 @@ if __name__=="__main__":
     args.experiment_name = args.experiment_name + f"_DRIAMS-{dataset}_{split_type}_sp{species_emb_dim}"
 
 
+    # if dataset=="A":
+    #     args.spectra_matrix = f"../data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
+    # else:
+    #     args.spectra_matrix = f"../data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
+
     if dataset=="A":
         args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
     else:
         args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
-
-    args.spectra_matrix = "../"+args.spectra_matrix 
 
     main(args)

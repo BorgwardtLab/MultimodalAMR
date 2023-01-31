@@ -1,9 +1,10 @@
 import sys
 sys.path.insert(0, "..")
-# sys.path.insert(0, "../data_split")
+sys.path.insert(0, "../data_split")
+import os
+# os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 import numpy as np
-import os
 from os.path import join, exists
 import pandas as pd
 import torch
@@ -15,29 +16,40 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from tqdm import tqdm
 from argparse import ArgumentParser
 import json
-from experiments.pl_experiment import Classifier_Experiment
+from experiments.pl_experiment import Classifier_Experiment_TestMetrics
+import itertools
+
 from data_split.data_utils import DataSplitter
 from models.data_loaders import DrugResistanceDataset_Fingerprints, SampleEmbDataset
-from models.classifier import MLP_Classifier
+from models.classifier import SpeciesBaseline_ResAMR_Classifier
 import sys
 
+# TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "partitioned"], np.arange(5), [0, 64]))
+
+# TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "partitioned"], np.arange(10))) #, [0]
+TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["drugs_zero_shot"], np.arange(60)))
+
+
+# TRAINING_SETUPS = list(itertools.product(['B'], ["random"], np.arange(5), [0]))
 
 
 def main(args):
     config = vars(args)
-
+    seed = args.seed
     # Setup output folders to save results
     output_folder = join("outputs", args.experiment_group, args.experiment_name, str(args.seed))
     if not exists(output_folder):
-        os.makedirs(output_folder)
+        os.makedirs(output_folder, exist_ok=True)
 
-    metrics_folder = join("outputs", args.experiment_group, args.experiment_name, "metrics")
-    if not exists(metrics_folder) and args.seed==0:
-        os.makedirs(metrics_folder)
+    results_folder = join("outputs", args.experiment_group, args.experiment_name + "_results")
+    if not exists(results_folder):
+        os.makedirs(results_folder, exist_ok=True)
 
     experiment_folder = join("outputs", args.experiment_group, args.experiment_name)
-    if exists(join(metrics_folder, f"test_metrics_{args.seed}.json")):
+    if exists(join(results_folder, f"test_metrics_{args.seed}.json")):
         sys.exit(0)
+    if not exists(experiment_folder):
+        os.makedirs(experiment_folder, exist_ok=True)
 
     # Read data
     driams_long_table = pd.read_csv(args.driams_long_table)
@@ -57,7 +69,11 @@ def main(args):
         train_df, val_df = dsplit.baseline_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)
     elif args.split_type =="drugs_zero_shot":
         drugs_list = sorted(dsplit.long_table["drug"].unique())
+        if args.seed>=len(drugs_list):
+            print("Drug index out of bound, exiting..\n\n")
+            sys.exit(0)
         target_drug = drugs_list[args.seed]
+        # target_drug = args.drug_name
         test_df, trainval_df = dsplit.drug_zero_shot_split(drug=target_drug)
         train_df, val_df = dsplit.baseline_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)
 
@@ -73,12 +89,15 @@ def main(args):
     species2idx = {s: i for i, s in idx2species.items()}
 
     config["n_unique_species"] = len(idx2species)
-
+    del config["seed"]
     # Save configuration
     if not exists(join(experiment_folder, "config.json")):
-        del config["seed"]
         with open(join(experiment_folder, "config.json"), "w") as f:
             json.dump(config, f)
+    if not exists(join(results_folder, "config.json")):
+        with open(join(results_folder, "config.json"), "w") as f:
+            json.dump(config, f)
+
 
 
     train_loader = DataLoader(
@@ -87,15 +106,19 @@ def main(args):
         val_dset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
     test_loader = DataLoader(
         test_dset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
-
+    
     # Instantiate model and pytorch lightning experiment
-    model = MLP_Classifier(config)
-    experiment = Classifier_Experiment(config, model)
+    model = SpeciesBaseline_ResAMR_Classifier(config)
+    experiment = Classifier_Experiment_TestMetrics(config, model)
 
     # Save summary of the model architecture
     if not exists(join(experiment_folder, "architecture.txt")):
         with open(join(experiment_folder, "architecture.txt"), "w") as f:
             f.write(model.__repr__())
+    if not exists(join(results_folder, "architecture.txt")):
+        with open(join(results_folder, "architecture.txt"), "w") as f:
+            f.write(model.__repr__())
+
 
     # Setup training callbacks
     checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(output_folder, "checkpoints"),
@@ -110,8 +133,10 @@ def main(args):
 
     # Train model
     print("Training..")
-    trainer = pl.Trainer(devices="auto", accelerator="auto", default_root_dir=output_folder, max_epochs=args.n_epochs, callbacks=callbacks,
-                         logger=tb_logger, log_every_n_steps=3
+    trainer = pl.Trainer(devices="auto", accelerator="auto", 
+        default_root_dir=output_folder, max_epochs=args.n_epochs,#, callbacks=callbacks,
+                        #  logger=tb_logger, log_every_n_steps=3
+                        # limit_train_batches=6
                          )
     trainer.fit(experiment, train_dataloaders=train_loader,
                 val_dataloaders=val_loader)
@@ -120,9 +145,14 @@ def main(args):
     # Test model
     print("Testing..")
     test_results = trainer.test(ckpt_path="best", dataloaders=test_loader)
-    with open(join(metrics_folder, "test_metrics_{}.json".format(args.seed)), "w") as f:
+    with open(join(results_folder, "test_metrics_{}.json".format(seed)), "w") as f:
         json.dump(test_results[0], f, indent=2)
+
+    test_df["Predictions"] = experiment.test_predictions
+    test_df.to_csv(join(results_folder, "test_set_{}.csv".format(seed)), index=False)
     print("Testing complete")
+
+
 
 
 
@@ -130,33 +160,70 @@ if __name__=="__main__":
 
     parser = ArgumentParser()
 
-    parser.add_argument("--experiment_name", type=str, default="myExperiment")
-    parser.add_argument("--experiment_group", type=str, default="ResMLP")
+    parser.add_argument("--experiment_name", type=str, default="testt3")
+    parser.add_argument("--experiment_group", type=str, default="Species1hot_ResAMR")
     parser.add_argument("--split_type", type=str, default="random", choices=["random", "partitioned", "drugs_zero_shot"])
-    parser.add_argument("--seed", type=int, default=0)
 
-    parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
+
+    parser.add_argument("--training_setup", type=int, default=0)
+    # parser.add_argument("--seed", type=int, default=0)
+
+    # parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
     parser.add_argument("--driams_long_table", type=str,
                         default="../processed_data/DRIAMS_combined_long_table.csv")
-    parser.add_argument("--spectra_matrix", type=str,
-                        default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
+    # parser.add_argument("--spectra_matrix", type=str,
+    #                     default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
     parser.add_argument("--drugs_df", type=str,
                         default="../processed_data/drug_fingerprints.csv")
 
+    # parser.add_argument("--species_embedding_dim", type=int, default=0) #?
+    parser.add_argument("--conv_out_size", type=int, default=512)
+    parser.add_argument("--sample_embedding_dim", type=int, default=512)
+    parser.add_argument("--drug_embedding_dim", type=int, default=512)
+    
 
-    parser.add_argument("--fingerprint_class", type=str, default="all", choices=["all", "MACCS", "morgan_512", "morgan_1024", "pubchem"])
+    parser.add_argument("--drug_emb_type", type=str, default="fingerprint", choices=["fingerprint", "vae_embedding"])
+    parser.add_argument("--fingerprint_class", type=str, default="morgan_1024", choices=["all", "MACCS", "morgan_512", "morgan_1024", "pubchem"])
+    parser.add_argument("--fingerprint_size", type=int, default=1024)
+
+    
 
     parser.add_argument("--n_hidden_layers", type=int, default=5)
-    parser.add_argument("--hidden_size", type=int, default=1024)
-    parser.add_argument("--input_size", type=int, default=8089)
+    # parser.add_argument("--hidden_size", type=int, default=1024)
+    # parser.add_argument("--input_size", type=int, default=8089)
 
 
-    parser.add_argument("--n_epochs", type=int, default=50)
-    parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--patience", type=int, default=10)
-    parser.add_argument("--learning_rate", type=float, default=0.001)
+    parser.add_argument("--n_epochs", type=int, default=1)
+    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--patience", type=int, default=50)
+    parser.add_argument("--learning_rate", type=float, default=0.003)
     parser.add_argument("--weight_decay", type=float, default=1e-5)
 
     args = parser.parse_args()
     args.num_workers = os.cpu_count()
+
+
+
+    dataset, split_type, seed = TRAINING_SETUPS[args.training_setup]
+    species_emb_dim = 0
+    args.seed = seed
+    args.driams_dataset = dataset
+    args.split_type = split_type
+    args.species_embedding_dim = species_emb_dim
+
+    
+    
+    args.experiment_name = args.experiment_name + f"_DRIAMS-{dataset}_{split_type}_sp{species_emb_dim}"
+
+
+    # if dataset=="A":
+    #     args.spectra_matrix = f"../data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
+    # else:
+    #     args.spectra_matrix = f"../data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
+
+    if dataset=="A":
+        args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
+    else:
+        args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
+    # args.spectra_matrix = f"../"+args.spectra_matrix
     main(args)

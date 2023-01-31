@@ -25,9 +25,10 @@ from models.classifier import Residual_AMR_Classifier
 import sys
 
 # TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "partitioned"], np.arange(5), [0, 64]))
-TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "partitioned"], np.arange(10), [0]))
-# TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["drugs_zero_shot"], np.arange(60), [0]))
+TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], np.arange(20)))
 # TRAINING_SETUPS = list(itertools.product(['B'], ["random"], np.arange(5), [0]))
+
+
 
 
 def main(args):
@@ -38,7 +39,7 @@ def main(args):
     if not exists(output_folder):
         os.makedirs(output_folder, exist_ok=True)
 
-    results_folder = join("outputs", args.experiment_group, args.experiment_name + "_results")
+    results_folder = join("outputs", args.experiment_group, args.experiment_name + "_recommendations")
     if not exists(results_folder):
         os.makedirs(results_folder, exist_ok=True)
 
@@ -57,28 +58,44 @@ def main(args):
     # Instantate data split
     dsplit = DataSplitter(driams_long_table, dataset=args.driams_dataset)
     samples_list = sorted(dsplit.long_table["sample_id"].unique())
-
+    drugs_set = sorted(dsplit.long_table["drug"].unique())
     # Split selection for the different experiments.
-    if args.split_type == "random":
-        train_df, val_df, test_df = dsplit.random_train_val_test_split(val_size=0.1, test_size=0.2, random_state=args.seed)
-    elif args.split_type =="partitioned":
-        trainval_df, test_df = dsplit.combination_train_test_split(dsplit.long_table, test_size=0.2, random_state=args.seed)
-        train_df, val_df = dsplit.baseline_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)
-    elif args.split_type =="drugs_zero_shot":
-        drugs_list = sorted(dsplit.long_table["drug"].unique())
-        if args.seed>=len(drugs_list):
-            print("Drug index out of bound, exiting..\n\n")
-            sys.exit(0)
-        target_drug = drugs_list[args.seed]
-        # target_drug = args.drug_name
-        test_df, trainval_df = dsplit.drug_zero_shot_split(drug=target_drug)
-        train_df, val_df = dsplit.baseline_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)
 
-    test_df.to_csv(join(output_folder, "test_set.csv"), index=False)
+    n_test_samples = int(0.2*len(samples_list))
+
+    np.random.seed(args.seed)
+    df1 = dsplit.long_table.drop_duplicates(["sample_id", "response"])
+    idx = df1["sample_id"].value_counts()
+    test_samples = idx[idx==2].index.tolist()
+    np.random.shuffle(test_samples)
+    test_samples = test_samples[:n_test_samples]
+
+    test_df = dsplit.long_table[dsplit.long_table["sample_id"].isin(test_samples)]
+    trainval_df = dsplit.long_table[~dsplit.long_table["sample_id"].isin(test_samples)]
+    train_df, val_df = dsplit.baseline_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)
+
+
+    test_spectra = test_df[["species", "sample_id"]].drop_duplicates(subset=["species", "sample_id"]).values.tolist()
+    prediction_data = []
+
+    for sp, sid in test_spectra:
+        for dr in drugs_set:
+            prediction_data.append([sp, sid, dr, args.driams_dataset])
+            
+    predictions_df = pd.DataFrame(prediction_data)
+    predictions_df.columns = ["species", "sample_id", "drug", "dataset"]
+    predictions_df = pd.merge(predictions_df,test_df,on=["species", "sample_id", "drug", "dataset"], how='outer')
+    predictions_df_dummy_response = predictions_df.fillna(0)
+    predictions_df = predictions_df.fillna(-1)
+    predictions_df.loc[:, "response"] = predictions_df["response"].astype(int)
+    predictions_df = predictions_df[test_df.columns]
+    predictions_df_dummy_response = predictions_df_dummy_response[test_df.columns]
+
+    
 
     train_dset = DrugResistanceDataset_Fingerprints(train_df, spectra_matrix, drugs_df, samples_list, fingerprint_class=config["fingerprint_class"])
     val_dset = DrugResistanceDataset_Fingerprints(val_df, spectra_matrix, drugs_df, samples_list, fingerprint_class=config["fingerprint_class"])
-    test_dset = DrugResistanceDataset_Fingerprints(test_df, spectra_matrix, drugs_df, samples_list, fingerprint_class=config["fingerprint_class"])
+    prediction_dset = DrugResistanceDataset_Fingerprints(predictions_df_dummy_response, spectra_matrix, drugs_df, samples_list, fingerprint_class=config["fingerprint_class"])
 
 
     sorted_species = sorted(dsplit.long_table["species"].unique())
@@ -101,8 +118,8 @@ def main(args):
         train_dset, batch_size=args.batch_size, shuffle=True, drop_last=True, num_workers=args.num_workers)
     val_loader = DataLoader(
         val_dset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
-    test_loader = DataLoader(
-        test_dset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+    prediction_loader = DataLoader(
+        prediction_dset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
     
     # Instantiate model and pytorch lightning experiment
     model = Residual_AMR_Classifier(config)
@@ -131,9 +148,9 @@ def main(args):
     # Train model
     print("Training..")
     trainer = pl.Trainer(devices="auto", accelerator="auto", 
-        default_root_dir=output_folder, max_epochs=args.n_epochs,#, callbacks=callbacks,
+        default_root_dir=output_folder, max_epochs=args.n_epochs#, callbacks=callbacks,
+                        ,limit_train_batches=5
                         #  logger=tb_logger, log_every_n_steps=3
-                        limit_train_batches=6
                          )
     trainer.fit(experiment, train_dataloaders=train_loader,
                 val_dataloaders=val_loader)
@@ -141,12 +158,12 @@ def main(args):
 
     # Test model
     print("Testing..")
-    test_results = trainer.test(ckpt_path="best", dataloaders=test_loader)
-    with open(join(results_folder, "test_metrics_{}.json".format(seed)), "w") as f:
-        json.dump(test_results[0], f, indent=2)
+    test_results = trainer.test(ckpt_path="best", dataloaders=prediction_loader)
+    # with open(join(results_folder, "test_metrics_{}.json".format(seed)), "w") as f:
+    #     json.dump(test_results[0], f, indent=2)
 
-    test_df["Predictions"] = experiment.test_predictions
-    test_df.to_csv(join(output_folder, "test_set.csv"), index=False)
+    predictions_df["Predictions"] = experiment.test_predictions
+    predictions_df.to_csv(join(results_folder, "prediction_set_seed{}.csv".format(seed)), index=False)
     print("Testing complete")
 
 
@@ -157,12 +174,12 @@ if __name__=="__main__":
 
     parser = ArgumentParser()
 
-    parser.add_argument("--experiment_name", type=str, default="MissingComb")
-    parser.add_argument("--experiment_group", type=str, default="ResAMR")
-    parser.add_argument("--split_type", type=str, default="random", choices=["random", "partitioned", "drugs_zero_shot"])
+    parser.add_argument("--experiment_name", type=str, default="testtDRIAMS")
+    parser.add_argument("--experiment_group", type=str, default="ResAMR_Recommender")
+    parser.add_argument("--split_type", type=str, default="random", choices=["random"])
 
 
-    parser.add_argument("--training_setup", type=int, default=0)
+    parser.add_argument("--training_setup", type=int, default=21)
     # parser.add_argument("--seed", type=int, default=0)
 
     # parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
@@ -190,7 +207,7 @@ if __name__=="__main__":
     # parser.add_argument("--input_size", type=int, default=8089)
 
 
-    parser.add_argument("--n_epochs", type=int, default=500)
+    parser.add_argument("--n_epochs", type=int, default=1)
     parser.add_argument("--batch_size", type=int, default=512)
     parser.add_argument("--patience", type=int, default=50)
     parser.add_argument("--learning_rate", type=float, default=0.003)
@@ -201,23 +218,18 @@ if __name__=="__main__":
 
 
 
-    dataset, split_type, seed, species_emb_dim = TRAINING_SETUPS[args.training_setup]
-    
+    dataset, seed = TRAINING_SETUPS[args.training_setup]
     args.seed = seed
     args.driams_dataset = dataset
-    args.split_type = split_type
-    args.species_embedding_dim = species_emb_dim
-
+    args.split_type = "random"
+    args.species_embedding_dim = 0
     
-    
-    args.experiment_name = args.experiment_name + f"_DRIAMS-{dataset}_{split_type}_sp{species_emb_dim}"
+    args.experiment_name = args.experiment_name + f"_DRIAMS-{dataset}_rec_sp{args.species_embedding_dim}"
 
 
     if dataset=="A":
-        args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
+        args.spectra_matrix = f"../data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
     else:
-        args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
-
-    args.spectra_matrix = "../"+args.spectra_matrix 
+        args.spectra_matrix = f"../data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
 
     main(args)
