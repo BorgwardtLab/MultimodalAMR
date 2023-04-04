@@ -205,12 +205,12 @@ class Residual_AMR_Classifier(nn.Module):
         self.spectrum_emb = nn.Linear(6000 ,config["conv_out_size"])
 
         # Drugs layers
-        if config["drug_emb_type"] == "vae_embedding":
-            self.drug_emb = nn.Identity()
-        elif config["drug_emb_type"] == "fingerprint":
-            self.drug_emb = nn.Linear(
-                config["fingerprint_size"], config["drug_embedding_dim"]
-            )
+        # if config["drug_emb_type"] == "vae_embedding" or config["drug_emb_type"] == "gnn_embedding":
+        #     self.drug_emb = nn.Identity()
+        # elif config["drug_emb_type"] == "fingerprint":
+        self.drug_emb = nn.Linear(
+            config["fingerprint_size"], config["drug_embedding_dim"]
+        )
 
         # Output network
         self.net = ResMLP(

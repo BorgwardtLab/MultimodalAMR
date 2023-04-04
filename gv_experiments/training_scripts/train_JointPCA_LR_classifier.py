@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(0, "..")
-# sys.path.insert(0, "../data_split")
+sys.path.insert(0, "../../data_split")
 
 import numpy as np
 import os

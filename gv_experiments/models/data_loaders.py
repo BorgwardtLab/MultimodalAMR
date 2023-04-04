@@ -66,11 +66,11 @@ class DrugResistanceDataset(Dataset):
         return species_idx, spectrum, fprint_tensor, response, dataset
 
 
-class DrugResistanceDataset_VAEEmbeddings(DrugResistanceDataset):
+class DrugResistanceDataset_Embeddings(DrugResistanceDataset):
     def __init__(self, long_table_df, spectra_matrix, drugs_embeddings, samples_list):
         super().__init__(long_table_df, spectra_matrix, drugs_embeddings, samples_list)
         self.drugs_tensor = torch.from_numpy(
-            drugs_embeddings.values / np.sum(drugs_embeddings.values)
+            drugs_embeddings.values
         ).float()
 
 
