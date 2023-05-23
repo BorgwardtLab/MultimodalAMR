@@ -8,6 +8,7 @@ job.sub
 *.sub
 gv_experiments/*.ipynb
 gv_experiments/OLD
+gv_experiments/experimental_notebooks
 .vscode/
 
 

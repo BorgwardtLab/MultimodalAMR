@@ -166,32 +166,33 @@ def main(args):
     test_df["Predictions"] = experiment.test_predictions
     test_df.to_csv(join(results_folder, f"test_set_seed{seed}.csv"), index=False)
     
-    # print("Evaluating feature importance")
-    # class ShapWrapper(nn.Module):
-    #     def __init__(self, model):
-    #         super().__init__()
-    #         self.model = model
+    if args.eval_importance:
+        print("Evaluating feature importance")
+        class ShapWrapper(nn.Module):
+            def __init__(self, model):
+                super().__init__()
+                self.model = model
+                
+            def forward(self, X):
+                species_idx = X[:, 0:1]
+                x_spectrum = X[:, 1:6001]
+                dr_tensor = X[:, 6001:]
+                response = []
+                dataset = []
+                batch = [species_idx, x_spectrum, dr_tensor, response, dataset]
+                return experiment.model(batch)
             
-    #     def forward(self, X):
-    #         species_idx = X[:, 0:1]
-    #         x_spectrum = X[:, 1:6001]
-    #         dr_tensor = X[:, 6001:]
-    #         response = []
-    #         dataset = []
-    #         batch = [species_idx, x_spectrum, dr_tensor, response, dataset]
-    #         return experiment.model(batch)
+        shap_wrapper = ShapWrapper(experiment.model)
+        explainer = shap.DeepExplainer(shap_wrapper, X_background)
+        shap_values = explainer.shap_values(X_fi_batch)
+        column_names = ["Species"] + [f"Spectrum_{i}" for i in range(6000)] + [f"Fprint_{i}" for i in range(1024)]
+        np.save(join(results_folder, f"shap_values_seed{seed}.npy"), shap_values)
+        if not exists(join(output_folder, "shap_values_columns.json")):
+            with open(join(output_folder, "shap_values_columns.json"), "w") as f:
+                json.dump(column_names, f, indent=2)
         
-    # shap_wrapper = ShapWrapper(experiment.model)
-    # explainer = shap.DeepExplainer(shap_wrapper, X_background)
-    # shap_values = explainer.shap_values(X_fi_batch)
-    # column_names = ["Species"] + [f"Spectrum_{i}" for i in range(6000)] + [f"Fprint_{i}" for i in range(1024)]
-    # np.save(join(results_folder, f"shap_values_seed{seed}.npy"), shap_values)
-    # if not exists(join(output_folder, "shap_values_columns.json")):
-    #     with open(join(output_folder, "shap_values_columns.json"), "w") as f:
-    #         json.dump(column_names, f, indent=2)
-    
-    # shap_values_df = pd.DataFrame(shap_values, columns=column_names)
-    # shap_values_df.to_csv(join(output_folder, "shap_values.csv"), index=False)
+        shap_values_df = pd.DataFrame(shap_values, columns=column_names)
+        shap_values_df.to_csv(join(output_folder, "shap_values.csv"), index=False)
   
     
     print("Testing complete")
@@ -210,16 +211,18 @@ if __name__=="__main__":
 
 
     parser.add_argument("--training_setup", type=int, default=0)
-    # parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--eval_importance", action="store_true")
+    
+    parser.add_argument("--seed", type=int, default=0)
 
-    # parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
+    parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
     parser.add_argument("--driams_long_table", type=str,
                         default="../processed_data/DRIAMS_combined_long_table.csv")
-    # parser.add_argument("--spectra_matrix", type=str,
-    #                     default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
+    parser.add_argument("--spectra_matrix", type=str,
+                        default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
     parser.add_argument("--drugs_df", type=str,
-                        default="../processed_data/GNN_embeddings.csv")
-                        # default="../processed_data/drug_fingerprints.csv")
+                        # default="../processed_data/GNN_embeddings.csv")
+                        default="../processed_data/drug_fingerprints.csv")
 
     # parser.add_argument("--species_embedding_dim", type=int, default=0) #?
     parser.add_argument("--conv_out_size", type=int, default=512)
@@ -255,8 +258,6 @@ if __name__=="__main__":
     args.driams_dataset = dataset
     args.split_type = split_type
     args.species_embedding_dim = species_emb_dim
-
-    
     
     args.experiment_name = args.experiment_name + f"_DRIAMS-{dataset}_{split_type}_sp{species_emb_dim}"
 
@@ -265,7 +266,5 @@ if __name__=="__main__":
         args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
     else:
         args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
-
-    # args.spectra_matrix = "../"+args.spectra_matrix 
 
     main(args)

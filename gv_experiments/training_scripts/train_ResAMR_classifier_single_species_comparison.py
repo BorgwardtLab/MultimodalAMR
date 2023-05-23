@@ -42,17 +42,15 @@ COMBINATIONS = [
 def main(args):
     config = vars(args)
     seed = args.seed
-    time.sleep(np.random.randint(1, 15))
     output_folder = join("outputs", args.experiment_group, args.experiment_name, str(args.seed))
     if not exists(output_folder):
-        os.makedirs(output_folder)
+        os.makedirs(output_folder, exist_ok=True)
 
     metrics_folder = join("outputs", args.experiment_group, args.experiment_name, "metrics")
     if not exists(metrics_folder):
-        os.makedirs(metrics_folder)
+        os.makedirs(metrics_folder, exist_ok=True)
 
     experiment_folder = join("outputs", args.experiment_group, args.experiment_name)
-    # if exists(join(metrics_folder, "test_metrics_{}.json".format(args.seed))):
     
 
     driams_long_table = pd.read_csv(args.driams_long_table)
@@ -71,7 +69,7 @@ def main(args):
 
     predictions_folder = join(experiment_folder, "predictions", f"{target_species}_{target_drug}" )
     if not exists(predictions_folder):
-        os.makedirs(predictions_folder)
+        os.makedirs(predictions_folder, exist_ok=True)
         
     if exists(join(predictions_folder, f"split_{split_idx}.csv")):
         print("\n\nExperiment already performed!\n\n")
@@ -94,13 +92,8 @@ def main(args):
     finetune_df = dsplit.long_table[finetune_ix]
 
     ft_train_df, ft_val_df = dsplit.baseline_train_test_split(finetune_df, test_size=0.25, random_state=args.seed)
-    
-    # test_df.to_csv(join(output_folder, "test_set.csv"), index=False)
-    # sys.exit(0)
-
 
     train_dset = DrugResistanceDataset_Fingerprints(train_df, spectra_matrix, drugs_df, samples_list, fingerprint_class=config["fingerprint_class"])
-    # print(train_dset[0])
     val_dset = DrugResistanceDataset_Fingerprints(val_df, spectra_matrix, drugs_df, samples_list, fingerprint_class=config["fingerprint_class"])
     test_dset = DrugResistanceDataset_Fingerprints(test_df, spectra_matrix, drugs_df, samples_list, fingerprint_class=config["fingerprint_class"])
 
@@ -138,9 +131,6 @@ def main(args):
             f.write(experiment.model.__repr__())
 
 
-
-    # checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(output_folder, "checkpoints"),
-    #                                       monitor="val_loss", filename="gst-{epoch:02d}-{val_loss:.4f}")
     early_stopping_callback = EarlyStopping(
         monitor="val_loss", mode="min", patience=args.patience
     )
@@ -151,8 +141,7 @@ def main(args):
 
     print("Training..")
     trainer = pl.Trainer(devices="auto", accelerator="auto", default_root_dir=output_folder, max_epochs=args.n_epochs, callbacks=callbacks,
-                         logger=tb_logger, log_every_n_steps=3,
-                        #  limit_train_batches=20, limit_val_batches=10, #limit_test_batches=5
+                         logger=tb_logger, log_every_n_steps=3
                          )
     trainer.fit(experiment, train_dataloaders=train_loader,
                 val_dataloaders=val_loader)
@@ -167,8 +156,7 @@ def main(args):
     config2["learning_rate"]/=3
     experiment2 = Classifier_Experiment(config2, deepcopy(experiment.model))
     trainer2 = pl.Trainer(devices="auto", accelerator="auto", default_root_dir=output_folder, max_epochs=args.n_finetune_epochs, callbacks=callbacks,
-                         logger=tb_logger, log_every_n_steps=3,
-                        #  limit_train_batches=20, limit_val_batches=10, #limit_test_batches=5
+                         logger=tb_logger, log_every_n_steps=3
                          )
     trainer2.fit(experiment2, train_dataloaders=ft_train_loader,
             val_dataloaders=ft_val_loader)
@@ -220,9 +208,7 @@ if __name__=="__main__":
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--patience", type=int, default=10)
     parser.add_argument("--learning_rate", type=float, default=0.001)
-    # parser.add_argument("--ft_learning_rate", type=float, default=0.0001)
     parser.add_argument("--weight_decay", type=float, default=1e-5)
-    # parser.add_argument("--num_workers", type=int, default=0)
     
     args = parser.parse_args()
     args.num_workers = os.cpu_count()

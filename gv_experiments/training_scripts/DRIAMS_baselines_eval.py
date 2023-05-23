@@ -63,7 +63,7 @@ def main(args):
 
     out_folder = join(args.output_folder, f"DRIAMS_{args.dataset}", args.model)
     if not exists(out_folder):
-        os.makedirs(out_folder)
+        os.makedirs(out_folder, exist_ok=True)
 
     with open(join(out_folder, "config.json"), "w") as f:
         json.dump(vars(args), f, indent=2)
