@@ -178,7 +178,7 @@ if __name__=="__main__":
 
     parser = ArgumentParser()
 
-    parser.add_argument("--experiment_name", type=str, default="resAMR_testtt")
+    parser.add_argument("--experiment_name", type=str, default="ResMLP_comparison")
     parser.add_argument("--experiment_group", type=str, default="PaperComparison")
     parser.add_argument("--seed", type=int, default=14)
 

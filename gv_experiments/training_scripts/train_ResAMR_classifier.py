@@ -1,5 +1,6 @@
 import sys
 sys.path.insert(0, "..")
+sys.path.insert(0, "./")
 sys.path.insert(0, "../..")
 sys.path.insert(0, "../../data_split")
 import os
@@ -27,25 +28,21 @@ import sys
 
 import shap
 
-# TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "partitioned"], np.arange(5), [0, 64]))
-TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random"], np.arange(10), [0])) #, "partitioned"
-# TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["drugs_zero_shot"], np.arange(60), [0]))
-# TRAINING_SETUPS = list(itertools.product(['B'], ["random"], np.arange(5), [0]))
-
+TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "drug_species_zero_shot", "drugs_zero_shot"], np.arange(5)))
 
 def main(args):
     config = vars(args)
     seed = args.seed
     # Setup output folders to save results
-    output_folder = join("outputs", args.experiment_group, args.experiment_name, str(args.seed))
+    output_folder = join(args.output_folder, args.experiment_group, args.experiment_name, str(args.seed))
     if not exists(output_folder):
         os.makedirs(output_folder, exist_ok=True)
 
-    results_folder = join("outputs", args.experiment_group, args.experiment_name + "_results")
+    results_folder = join(args.output_folder, args.experiment_group, args.experiment_name + "_results")
     if not exists(results_folder):
         os.makedirs(results_folder, exist_ok=True)
 
-    experiment_folder = join("outputs", args.experiment_group, args.experiment_name)
+    experiment_folder = join(args.output_folder, args.experiment_group, args.experiment_name)
     if exists(join(results_folder, f"test_metrics_{args.seed}.json")):
         sys.exit(0)
     if not exists(experiment_folder):
@@ -53,7 +50,7 @@ def main(args):
 
     # Read data
     driams_long_table = pd.read_csv(args.driams_long_table)
-    spectra_matrix = np.load(args.spectra_matrix)
+    spectra_matrix = np.load(args.spectra_matrix).astype(float)
     drugs_df = pd.read_csv(args.drugs_df, index_col=0)
     driams_long_table = driams_long_table[driams_long_table["drug"].isin(drugs_df.index)]
 
@@ -64,7 +61,7 @@ def main(args):
     # Split selection for the different experiments.
     if args.split_type == "random":
         train_df, val_df, test_df = dsplit.random_train_val_test_split(val_size=0.1, test_size=0.2, random_state=args.seed)
-    elif args.split_type =="partitioned":
+    elif args.split_type =="drug_species_zero_shot":
         trainval_df, test_df = dsplit.combination_train_test_split(dsplit.long_table, test_size=0.2, random_state=args.seed)
         train_df, val_df = dsplit.baseline_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)
     elif args.split_type =="drugs_zero_shot":
@@ -207,10 +204,11 @@ if __name__=="__main__":
 
     parser.add_argument("--experiment_name", type=str, default="GNN")
     parser.add_argument("--experiment_group", type=str, default="ResAMR")
-    parser.add_argument("--split_type", type=str, default="random", choices=["random", "partitioned", "drugs_zero_shot"])
+    parser.add_argument("--output_folder", type=str, default="outputs")
+    parser.add_argument("--split_type", type=str, default="random", choices=["random", "drug_species_zero_shot", "drugs_zero_shot"])
 
 
-    parser.add_argument("--training_setup", type=int, default=0)
+    parser.add_argument("--training_setup", type=int)
     parser.add_argument("--eval_importance", action="store_true")
     
     parser.add_argument("--seed", type=int, default=0)
@@ -224,7 +222,7 @@ if __name__=="__main__":
                         # default="../processed_data/GNN_embeddings.csv")
                         default="../processed_data/drug_fingerprints.csv")
 
-    # parser.add_argument("--species_embedding_dim", type=int, default=0) #?
+    # parser.add_argument("--species_embedding_dim", type=int, default=0) 
     parser.add_argument("--conv_out_size", type=int, default=512)
     parser.add_argument("--sample_embedding_dim", type=int, default=512)
     parser.add_argument("--drug_embedding_dim", type=int, default=512)
@@ -251,20 +249,20 @@ if __name__=="__main__":
     args.num_workers = os.cpu_count()
 
 
-
-    dataset, split_type, seed, species_emb_dim = TRAINING_SETUPS[args.training_setup]
+    if args.training_setup is not None:
+        dataset, split_type, seed = TRAINING_SETUPS[args.training_setup]
+        
+        args.seed = seed
+        args.driams_dataset = dataset
+        args.split_type = split_type
+    args.species_embedding_dim = 0
     
-    args.seed = seed
-    args.driams_dataset = dataset
-    args.split_type = split_type
-    args.species_embedding_dim = species_emb_dim
-    
-    args.experiment_name = args.experiment_name + f"_DRIAMS-{dataset}_{split_type}_sp{species_emb_dim}"
+    args.experiment_name = args.experiment_name + f"_DRIAMS-{args.driams_dataset}_{args.split_type}"
 
 
-    if dataset=="A":
-        args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
-    else:
-        args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
+    # if dataset=="A":
+    #     args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
+    # else:
+    #     args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
 
     main(args)

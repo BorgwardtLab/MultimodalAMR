@@ -24,14 +24,8 @@ from models.data_loaders import DrugResistanceDataset_Fingerprints, SampleEmbDat
 from models.classifier import SpeciesBaseline_ResAMR_Classifier
 import sys
 
-# TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "partitioned"], np.arange(5), [0, 64]))
-
-# TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "partitioned"], np.arange(10))) #, [0]
-TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["drugs_zero_shot"], np.arange(60)))
-
-
-# TRAINING_SETUPS = list(itertools.product(['B'], ["random"], np.arange(5), [0]))
-
+TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "drug_species_zero_shot"], np.arange(5)))
+# TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["drugs_zero_shot"], np.arange(60)))
 
 def main(args):
     config = vars(args)
@@ -64,7 +58,7 @@ def main(args):
     # Split selection for the different experiments.
     if args.split_type == "random":
         train_df, val_df, test_df = dsplit.random_train_val_test_split(val_size=0.1, test_size=0.2, random_state=args.seed)
-    elif args.split_type =="partitioned":
+    elif args.split_type =="drug_species_zero_shot":
         trainval_df, test_df = dsplit.combination_train_test_split(dsplit.long_table, test_size=0.2, random_state=args.seed)
         train_df, val_df = dsplit.baseline_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)
     elif args.split_type =="drugs_zero_shot":
@@ -159,20 +153,20 @@ def main(args):
 if __name__=="__main__":
 
     parser = ArgumentParser()
+    parser.add_argument("--training_setup", type=int)
 
-    parser.add_argument("--experiment_name", type=str, default="testt3")
+    parser.add_argument("--experiment_name", type=str, default="ablation_spectrum")
     parser.add_argument("--experiment_group", type=str, default="Species1hot_ResAMR")
-    parser.add_argument("--split_type", type=str, default="random", choices=["random", "partitioned", "drugs_zero_shot"])
+    parser.add_argument("--split_type", type=str, default="random", choices=["random", "drug_species_zero_shot", "drugs_zero_shot"])
 
 
-    parser.add_argument("--training_setup", type=int, default=0)
-    # parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seed", type=int, default=0)
 
-    # parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
+    parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
     parser.add_argument("--driams_long_table", type=str,
                         default="../processed_data/DRIAMS_combined_long_table.csv")
-    # parser.add_argument("--spectra_matrix", type=str,
-    #                     default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
+    parser.add_argument("--spectra_matrix", type=str,
+                        default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
     parser.add_argument("--drugs_df", type=str,
                         default="../processed_data/drug_fingerprints.csv")
 
@@ -203,27 +197,16 @@ if __name__=="__main__":
     args.num_workers = os.cpu_count()
 
 
-
-    dataset, split_type, seed = TRAINING_SETUPS[args.training_setup]
-    species_emb_dim = 0
-    args.seed = seed
-    args.driams_dataset = dataset
-    args.split_type = split_type
-    args.species_embedding_dim = species_emb_dim
+    if args.training_setup is not None:
+        dataset, split_type, seed = TRAINING_SETUPS[args.training_setup]
+        species_emb_dim = 0
+        args.seed = seed
+        args.driams_dataset = dataset
+        args.split_type = split_type
+    args.species_embedding_dim = 0
 
     
     
-    args.experiment_name = args.experiment_name + f"_DRIAMS-{dataset}_{split_type}_sp{species_emb_dim}"
+    args.experiment_name = args.experiment_name + f"_DRIAMS-{args.driams_dataset}_{args.split_type}"
 
-
-    # if dataset=="A":
-    #     args.spectra_matrix = f"../data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
-    # else:
-    #     args.spectra_matrix = f"../data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
-
-    if dataset=="A":
-        args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
-    else:
-        args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
-    # args.spectra_matrix = f"../"+args.spectra_matrix
     main(args)

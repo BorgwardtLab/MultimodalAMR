@@ -24,11 +24,7 @@ from models.data_loaders import DrugResistanceDataset_Fingerprints, SampleEmbDat
 from models.classifier import Residual_AMR_Classifier
 import sys
 
-# TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "partitioned"], np.arange(5), [0, 64]))
 TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], np.arange(20)))
-# TRAINING_SETUPS = list(itertools.product(['B'], ["random"], np.arange(5), [0]))
-
-
 
 
 def main(args):
@@ -59,8 +55,8 @@ def main(args):
     dsplit = DataSplitter(driams_long_table, dataset=args.driams_dataset)
     samples_list = sorted(dsplit.long_table["sample_id"].unique())
     drugs_set = sorted(dsplit.long_table["drug"].unique())
+    
     # Split selection for the different experiments.
-
     n_test_samples = int(0.2*len(samples_list))
 
     np.random.seed(args.seed)
@@ -173,24 +169,22 @@ def main(args):
 if __name__=="__main__":
 
     parser = ArgumentParser()
+    parser.add_argument("--training_setup", type=int)
 
-    parser.add_argument("--experiment_name", type=str, default="testtDRIAMS")
+    parser.add_argument("--experiment_name", type=str, default="recommend_DRIAMS")
     parser.add_argument("--experiment_group", type=str, default="ResAMR_Recommender")
-    parser.add_argument("--split_type", type=str, default="random", choices=["random"])
 
+    parser.add_argument("--seed", type=int, default=0)
 
-    parser.add_argument("--training_setup", type=int, default=21)
-    # parser.add_argument("--seed", type=int, default=0)
-
-    # parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
+    parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
     parser.add_argument("--driams_long_table", type=str,
                         default="../processed_data/DRIAMS_combined_long_table.csv")
-    # parser.add_argument("--spectra_matrix", type=str,
-    #                     default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
+    parser.add_argument("--spectra_matrix", type=str,
+                        default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
     parser.add_argument("--drugs_df", type=str,
                         default="../processed_data/drug_fingerprints.csv")
 
-    # parser.add_argument("--species_embedding_dim", type=int, default=0) #?
+    # parser.add_argument("--species_embedding_dim", type=int, default=0) 
     parser.add_argument("--conv_out_size", type=int, default=512)
     parser.add_argument("--sample_embedding_dim", type=int, default=512)
     parser.add_argument("--drug_embedding_dim", type=int, default=512)
@@ -217,19 +211,12 @@ if __name__=="__main__":
     args.num_workers = os.cpu_count()
 
 
-
-    dataset, seed = TRAINING_SETUPS[args.training_setup]
-    args.seed = seed
-    args.driams_dataset = dataset
-    args.split_type = "random"
+    if args.training_setup is not None:
+        dataset, seed = TRAINING_SETUPS[args.training_setup]
+        args.seed = seed
+        args.driams_dataset = dataset
     args.species_embedding_dim = 0
     
-    args.experiment_name = args.experiment_name + f"_DRIAMS-{dataset}_rec_sp{args.species_embedding_dim}"
-
-
-    if dataset=="A":
-        args.spectra_matrix = f"../data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
-    else:
-        args.spectra_matrix = f"../data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
+    args.experiment_name = args.experiment_name + f"_DRIAMS-{args.driams_dataset}_recommend"
 
     main(args)

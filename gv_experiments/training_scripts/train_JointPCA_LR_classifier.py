@@ -20,12 +20,8 @@ import itertools
 from sklearn.preprocessing import StandardScaler
 
 
-TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "partitioned"], np.arange(10))) + \
+TRAINING_SETUPS = list(itertools.product(['A', 'B', 'C', 'D'], ["random", "drug_species_zero_shot"], np.arange(10))) + \
                   list(itertools.product(['A', 'B', 'C', 'D'], ["drugs_zero_shot"], np.arange(60)))
-
-# TRAINING_SETUPS = list(itertools.product(['B', 'C', 'D'], ["drugs_zero_shot", "partitioned"], np.arange(10))) + \
-#                   list(itertools.product(['A', 'B', 'C', 'D'], ["drugs_zero_shot"], np.arange(60)))
-
 
 
 def main(args):
@@ -51,7 +47,7 @@ def main(args):
     samples_list = sorted(dsplit.long_table["sample_id"].unique())
     if args.split_type=="random":
         train_df, val_df, test_df = dsplit.random_train_val_test_split(val_size=0.1, test_size=0.2, random_state=args.seed)
-    elif args.split_type=="partitioned":
+    elif args.split_type=="drug_species_zero_shot":
         trainval_df, test_df = dsplit.combination_train_test_split(dsplit.long_table, test_size=0.2, random_state=args.seed)
         train_df, val_df = dsplit.baseline_train_test_split(trainval_df, test_size=0.2, random_state=args.seed)
     elif args.split_type =="drugs_zero_shot":
@@ -166,41 +162,32 @@ if __name__=="__main__":
 
     parser = ArgumentParser()
 
-    parser.add_argument("--training_setup", type=int, default=0)
+    parser.add_argument("--training_setup", type=int)
 
     parser.add_argument("--experiment_name", type=str, default="concat_95_perc_variance")
     parser.add_argument("--experiment_group", type=str, default="PCA_Concat")
-    # parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seed", type=int, default=0)
 
-    # parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
+    parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
     parser.add_argument("--driams_long_table", type=str,
                         default="../processed_data/DRIAMS_combined_long_table.csv")
-    # parser.add_argument("--spectra_matrix", type=str,
-    #                     default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
+    parser.add_argument("--spectra_matrix", type=str,
+                        default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
     parser.add_argument("--drugs_df", type=str,
                         default="../processed_data/drug_fingerprints.csv")
-    # parser.add_argument("--split_type", type=str, default="random", choices=["random", "partitioned", "drugs_zero_shot"])
+    parser.add_argument("--split_type", type=str, default="random", choices=["random", "drug_species_zero_shot", "drugs_zero_shot"])
 
     parser.add_argument("--fingerprint_class", type=str, default="MACCS", choices=["all", "MACCS", "morgan_512", "morgan_1024", "pubchem"])
     parser.add_argument("--perc_variance", type=float, default=0.95)
 
     args = parser.parse_args()
-    dataset, split_type, seed = TRAINING_SETUPS[args.training_setup]
+    if args.training_setup is not None:
+        dataset, split_type, seed = TRAINING_SETUPS[args.training_setup]
 
-    args.driams_dataset = dataset
-    args.split_type = split_type
-    args.seed = int(seed)
+        args.driams_dataset = dataset
+        args.split_type = split_type
+        args.seed = int(seed)
 
-    if dataset=="A":
-        args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
-    else:
-        args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
-    
-    args.experiment_name = args.experiment_name + f"_DRIAMS-{dataset}_{split_type}"
+    args.experiment_name = args.experiment_name + f"_DRIAMS-{args.driams_dataset}_{args.split_type}"
 
     main(args)
-
-    # for i in range(10):
-    #     args.seed = i
-    #     main(args)
-    #     print(f"\n\nProcessing seed {i}\n\n")
