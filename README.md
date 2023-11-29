@@ -1,6 +1,7 @@
 # A multimodal approach to antimicrobial resistance prediction for drug recommendation and large-scale classification.
 
-This repository contains the code used to conduct experiments for the paper _A multimodal approach to antimicrobial resistance prediction for drug recommendation and large-scale classification._ from Giovanni Visonà, Yiran Li, Diane Duroux, Lucas Miranda, Emese Sukei, Karsten Borgwardt, and Carlos Oliver.
+
+This repository contains the code used to conduct experiments for the paper [_Multimodal learning in clinical proteomics: enhancing antimicrobial resistance prediction models with chemical information_](https://doi.org/10.1093/bioinformatics/btad717) from Giovanni Visonà, Diane Duroux, Lucas Miranda, Emese Sükei, Yiran Li, Karsten Borgwardt, and Carlos Oliver.
 
 The paper present work aimed at predictiong Antimicrobial Resistance (AMR) using proteomic and chemical features, which is examined through two clinically relevant tasks: drug recommendation and generalized resistance prediction. We demonstrate how the multi-view representation of the pathogenic samples adopted paired with the use of deep learning to  leverage the scale of the available datasets substantially outperfors the previous single-drug and single-species predictive models.
 
