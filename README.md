@@ -13,6 +13,8 @@ The experiments are organized based on the authors that performed them, while th
 `dd_experiments` includes the training of the Siamese Network model and the evaluation of all the recommendation models except the ResMLP.
 `gv_experiments` contains scripts to train the baseline PCA+LR experiments and the scripts related to the ResMLP experiments, including classification, recommendation, and ablation experiments.
 
+The MALDI-TOF spectra for reproducing the experiments can be obtained by downloading the DRIAMS dataset files from [Dryad](https://datadryad.org/stash/dataset/doi:10.5061/dryad.bzkh1899q), and then using the `Process DRIAMS data` notebook in the `data` folder.
+
 
 ## Siamese Network model
 
