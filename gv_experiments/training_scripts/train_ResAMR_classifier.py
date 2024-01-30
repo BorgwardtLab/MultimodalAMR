@@ -222,7 +222,6 @@ if __name__=="__main__":
                         # default="../processed_data/GNN_embeddings.csv")
                         default="../processed_data/drug_fingerprints.csv")
 
-    # parser.add_argument("--species_embedding_dim", type=int, default=0) 
     parser.add_argument("--conv_out_size", type=int, default=512)
     parser.add_argument("--sample_embedding_dim", type=int, default=512)
     parser.add_argument("--drug_embedding_dim", type=int, default=512)
@@ -235,8 +234,6 @@ if __name__=="__main__":
     
 
     parser.add_argument("--n_hidden_layers", type=int, default=5)
-    # parser.add_argument("--hidden_size", type=int, default=1024)
-    # parser.add_argument("--input_size", type=int, default=8089)
 
 
     parser.add_argument("--n_epochs", type=int, default=1)
@@ -259,10 +256,5 @@ if __name__=="__main__":
     
     args.experiment_name = args.experiment_name + f"_DRIAMS-{args.driams_dataset}_{args.split_type}"
 
-
-    # if dataset=="A":
-    #     args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_all.npy"
-    # else:
-    #     args.spectra_matrix = f"data/DRIAMS-{dataset}/spectra_binned_6000_2018.npy"
 
     main(args)

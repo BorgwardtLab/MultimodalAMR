@@ -170,7 +170,6 @@ if __name__=="__main__":
     parser.add_argument("--drugs_df", type=str,
                         default="../processed_data/drug_fingerprints.csv")
 
-    # parser.add_argument("--species_embedding_dim", type=int, default=0) #?
     parser.add_argument("--conv_out_size", type=int, default=512)
     parser.add_argument("--sample_embedding_dim", type=int, default=512)
     parser.add_argument("--drug_embedding_dim", type=int, default=512)
@@ -183,9 +182,6 @@ if __name__=="__main__":
     
 
     parser.add_argument("--n_hidden_layers", type=int, default=5)
-    # parser.add_argument("--hidden_size", type=int, default=1024)
-    # parser.add_argument("--input_size", type=int, default=8089)
-
 
     parser.add_argument("--n_epochs", type=int, default=1)
     parser.add_argument("--batch_size", type=int, default=16)
