@@ -1,6 +1,5 @@
 import os
-from setuptools import setup
-
+from setuptools import setup, find_packages
 # Utility function to read the README file.
 # Used for the long_description.  It's nice, because now 1) we have a top level
 # README file and 2) it's easier to type in the README file than to put a raw
@@ -16,7 +15,7 @@ setup(
     description = ("Codebase for training multimodal models to predict antimicrobial resistance."),
     license = "BSD",
     keywords = "AMR MALDI-TOF Resistance",
-    packages=['multimodal_amr'],
+    packages=['multimodal_amr', 'multimodal_amr.data_split', 'multimodal_amr.experiments', 'multimodal_amr.models'],
     long_description=read('package_description'),
     classifiers=[
         "Development Status :: 1 - Alpha",

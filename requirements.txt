@@ -148,7 +148,6 @@ tornado==6.1
 tqdm==4.64.1
 traitlets==5.5.0
 typing_extensions==4.3.0
-umap-learn==0.5.3
 urllib3==1.26.12
 wandb==0.16.2
 wcwidth==0.2.5

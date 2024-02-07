@@ -10,5 +10,5 @@ Specifically:
 - `train_recommender_ResAMR.py` is the script used to train the model for recommendation purposes.
 - `train_SplitPCA_LR_classifier.py` and `train_JointPCA_LR_classifier.py` contain the training of the PCA+LR baseline. They respectively apply the PCA step before and after concatenation.
 - `train_1hotSpecies_ResAMR_classifier.py` is the ablation experiment where the MALDI-TOF spectrum is substituted by the 1-hot encoding of the pathogen species.
-- `train_ResAMR_classifier_single_species_comparison.py` trains the models for the comparison with the single drug-single species from the Weis et al. paper.
+- `pretrain_ResAMR_baseline_comparison.py` and `finetune_ResAMR_baseline_comparison.py` are used for the comparison with the single drug-single species from the Weis et al. paper. 
 

@@ -78,11 +78,12 @@ python3 gv_experiments/training_scripts/pretrain_ResAMR_baseline_comparison.py -
         --seed 42 --driams_long_table "processed_data/DRIAMS_combined_long_table.csv" --splits_file "data/AMR_baseline_splits_noHospitalHygene.json" \
         --spectra_matrix "data/DRIAMS-A/spectra_binned_6000_all.npy" --drugs_df "processed_data/drug_fingerprints.csv" \
         --n_epochs 100 --learning_rate 0.0003 --fingerprint_class "morgan_1024" \
-        --patience 50 --driams_dataset "A" --batch_size 128 --combination_idx 7 --root_folder "/home/user/results_folder"
+        --patience 50 --driams_dataset "A" --batch_size 128 --root_folder "/home/user/results_folder" \
+        --target_drug "Oxacillin" --target_species "Staphylococcus aureus"
 ```
 
 The resulting model will be saved in the folder `/home/user/results_folder`. For the finetuning, we load the target splits, and tune the model on the target combination data not included in the target split.
-For each drug-species combination, we have selected 5 test splits. The finetuning command for split `$split_idx` is:
+For each drug-species combination, we have selected 5 test splits. The finetuning command for split `$split_idx` (which should be a value in [0 1 2 3 4]) is:
 
 ```
 python3 gv_experiments/training_scripts/finetune_ResAMR_baseline_comparison.py --experiment_name "FinetuningResMLP" --experiment_group "ResAMR_SingleSpecies_SingleDrug" \

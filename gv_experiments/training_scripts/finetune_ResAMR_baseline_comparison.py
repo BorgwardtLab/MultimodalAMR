@@ -68,17 +68,10 @@ def main(args):
     if root_folder is not None:
         output_folder = join(root_folder, output_folder)
         experiment_folder = join(root_folder, experiment_folder)
-    metrics_folder = join(output_folder, "metrics")
     data_folder = join(output_folder, "finetuning_data_splits")
 
-    if not exists(output_folder):
-        os.makedirs(output_folder, exist_ok=True)
-
-    if not exists(metrics_folder):
-        os.makedirs(metrics_folder, exist_ok=True)
-
-    if not exists(data_folder):
-        os.makedirs(data_folder, exist_ok=True)
+    os.makedirs(output_folder, exist_ok=True)
+    os.makedirs(data_folder, exist_ok=True)
 
     model_checkpoint_folder = join(pretrained_checkpoints_folder, "{}_{}".format(
         target_species.replace(" ", "_"), target_drug.replace(" ", "_")))

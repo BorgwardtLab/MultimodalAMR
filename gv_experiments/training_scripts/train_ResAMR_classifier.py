@@ -1,8 +1,4 @@
 import sys
-sys.path.insert(0, "..")
-sys.path.insert(0, "./")
-sys.path.insert(0, "../..")
-sys.path.insert(0, "../../data_split")
 import os
 # os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
@@ -18,13 +14,12 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from tqdm import tqdm
 from argparse import ArgumentParser
 import json
-from experiments.pl_experiment import Classifier_Experiment
+from multimodal_amr.experiments.pl_experiment import Classifier_Experiment
 import itertools
 
-from data_split.data_utils import DataSplitter
-from models.data_loaders import DrugResistanceDataset_Fingerprints, SampleEmbDataset, DrugResistanceDataset_Embeddings
-from models.classifier import Residual_AMR_Classifier
-import sys
+from multimodal_amr.data_split.data_utils import DataSplitter
+from multimodal_amr.models.data_loaders import DrugResistanceDataset_Fingerprints, SampleEmbDataset, DrugResistanceDataset_Embeddings
+from multimodal_amr.models.classifier import Residual_AMR_Classifier
 
 import shap
 
@@ -214,27 +209,21 @@ if __name__=="__main__":
     parser.add_argument("--seed", type=int, default=0)
 
     parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
-    parser.add_argument("--driams_long_table", type=str,
-                        default="../processed_data/DRIAMS_combined_long_table.csv")
-    parser.add_argument("--spectra_matrix", type=str,
-                        default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
-    parser.add_argument("--drugs_df", type=str,
-                        # default="../processed_data/GNN_embeddings.csv")
-                        default="../processed_data/drug_fingerprints.csv")
+    parser.add_argument("--driams_long_table", type=str)
+    parser.add_argument("--spectra_matrix", type=str)
+    parser.add_argument("--drugs_df", type=str)
 
     parser.add_argument("--conv_out_size", type=int, default=512)
     parser.add_argument("--sample_embedding_dim", type=int, default=512)
     parser.add_argument("--drug_embedding_dim", type=int, default=512)
     
 
-    parser.add_argument("--drug_emb_type", type=str, default="gnn_embedding", choices=["fingerprint", "vae_embedding", "gnn_embedding"])
+    parser.add_argument("--drug_emb_type", type=str, default="fingerprint", choices=["fingerprint", "vae_embedding", "gnn_embedding"])
     parser.add_argument("--fingerprint_class", type=str, default="morgan_1024", choices=["all", "MACCS", "morgan_512", "morgan_1024", "pubchem", "none"])
     parser.add_argument("--fingerprint_size", type=int, default=128)
 
-    
 
     parser.add_argument("--n_hidden_layers", type=int, default=5)
-
 
     parser.add_argument("--n_epochs", type=int, default=1)
     parser.add_argument("--batch_size", type=int, default=512)

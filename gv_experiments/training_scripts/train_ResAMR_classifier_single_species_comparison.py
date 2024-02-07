@@ -1,6 +1,4 @@
 import sys
-sys.path.insert(0, "..")
-# sys.path.insert(0, "../data_split")
 
 import numpy as np
 import os
@@ -15,10 +13,10 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from tqdm import tqdm
 from argparse import ArgumentParser
 import json
-from experiments.pl_experiment import Classifier_Experiment
-from data_split.data_utils import DataSplitter
-from models.data_loaders import DrugResistanceDataset_Fingerprints, SampleEmbDataset
-from models.classifier import Residual_AMR_Classifier
+from multimodal_amr.experiments.pl_experiment import Classifier_Experiment
+from multimodal_amr.data_split.data_utils import DataSplitter
+from multimodal_amr.models.data_loaders import DrugResistanceDataset_Fingerprints, SampleEmbDataset
+from multimodal_amr.models.classifier import Residual_AMR_Classifier
 import sys
 import time
 from copy import deepcopy

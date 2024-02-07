@@ -57,7 +57,7 @@ def main(args):
             target_species, target_drug = COMBINATIONS[comb_idx]
         split_idx = config["split_idx"]
     print(
-        f"Combination {comb_idx} - Split {split_idx} - Target species {target_species} - Target drug {target_drug}")
+        f"Split {split_idx} - Target species {target_species} - Target drug {target_drug}")
 
     pretrained_checkpoints_folder = config["pretrained_checkpoints_folder"]
     pretrained_model_folder = join(pretrained_checkpoints_folder, "{}_{}".format(
@@ -72,12 +72,10 @@ def main(args):
     if root_folder is not None:
         output_folder = join(root_folder, output_folder)
         experiment_folder = join(root_folder, experiment_folder)
-    metrics_folder = join(output_folder, "metrics")
     data_folder = join(
         output_folder, "finetuning_data_splits", f"split_{split_idx}")
 
     os.makedirs(output_folder, exist_ok=True)
-    os.makedirs(metrics_folder, exist_ok=True)
     os.makedirs(data_folder, exist_ok=True)
 
     checkpoints_folder = join(pretrained_model_folder, "checkpoints")
@@ -178,7 +176,7 @@ def main(args):
 
     tb_logger = pl_loggers.TensorBoardLogger(
         save_dir=join(output_folder, "logs/"))
-    # wandb_logger = pl_loggers.WandbLogger(project=args.experiment_name+"_finetuning"+label)
+    # wandb_logger = pl_loggers.WandbLogger(project=args.experiment_name+"_finetuning")
 
     print("Training..")
     trainer = pl.Trainer(devices="auto", accelerator="auto", default_root_dir=output_folder, max_epochs=args.n_epochs, callbacks=callbacks,
@@ -224,24 +222,24 @@ if __name__ == "__main__":
                         default="FinetuningResMLP")
     parser.add_argument("--experiment_group", type=str,
                         default="SingleSpSingleDrugResMLP")
-    parser.add_argument("--seed", type=int, default=18)
-    parser.add_argument("--training_setup", type=int, default=0)
-    parser.add_argument("--label", type=str, default="")
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--pretrained_checkpoints_folder",
                         type=str, default="")
+    
+    parser.add_argument("--training_setup", type=int)
+    parser.add_argument("--combination_idx", type=int)
+    parser.add_argument("--target_drug", type=str)
+    parser.add_argument("--target_species", type=str)
+    parser.add_argument("--split_idx", type=int)
+
 
     parser.add_argument("--driams_dataset", type=str,
                         choices=['A', 'B', 'C', 'D'], default="A")
-    parser.add_argument("--driams_long_table", type=str,
-                        default="/home/gvisona/Projects/AMR_Pred/processed_data/DRIAMS_combined_long_table.csv")
-    parser.add_argument("--spectra_matrix", type=str,
-                        default="/home/gvisona/Projects/AMR_Pred/data/DRIAMS-A/spectra_binned_6000_all.npy")
-    parser.add_argument("--drugs_df", type=str,
-                        default="/home/gvisona/Projects/AMR_Pred/processed_data/drug_fingerprints.csv")
-    parser.add_argument("--splits_file", type=str,
-                        default="/home/gvisona/Projects/AMR_Pred/data/AMR_baseline_splits_hh.json")
-    parser.add_argument("--root_folder", type=str,
-                        default="/fast/gvisona/AMR_Pred")
+    parser.add_argument("--driams_long_table", type=str)
+    parser.add_argument("--spectra_matrix", type=str)
+    parser.add_argument("--drugs_df", type=str)
+    parser.add_argument("--splits_file", type=str)
+    parser.add_argument("--root_folder", type=str)
 
     parser.add_argument("--drug_emb_type", type=str,
                         default="fingerprint", choices=["fingerprint", "vae_embedding"])
