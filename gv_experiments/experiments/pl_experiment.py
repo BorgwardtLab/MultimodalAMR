@@ -18,6 +18,7 @@ from sklearn.metrics import precision_score, recall_score
 class Classifier_Experiment(pl.LightningModule):
     def __init__(self, config, model):
         super().__init__()
+        self.save_hyperparameters(ignore=['model'])
         self.config = config
         self.batch_size = config["batch_size"]
         # self.model = AMR_Classifier(config)
@@ -66,7 +67,7 @@ class Classifier_Experiment(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss, logs, predictions = self._step(batch)
-        self.log("train_loss", loss, on_step=True, on_epoch=True,
+        self.log("train_loss", loss, on_step=False, on_epoch=True,
                  prog_bar=True, logger=True, batch_size=self.batch_size)
         for k, v in logs.items():
             self.log(
@@ -81,7 +82,7 @@ class Classifier_Experiment(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         loss, logs, predictions = self._step(batch)
-        self.log("val_loss", loss, on_step=True, on_epoch=True,
+        self.log("val_loss", loss, on_step=False, on_epoch=True,
                  prog_bar=True, logger=True, batch_size=self.batch_size)
         for k, v in logs.items():
             self.log(

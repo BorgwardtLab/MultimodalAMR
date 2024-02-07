@@ -11,6 +11,11 @@ gv_experiments/OLD
 gv_experiments/experimental_notebooks
 .vscode/
 
+data/DRIAMS-A
+data/DRIAMS-B
+data/DRIAMS-C
+data/DRIAMS-D
+
 
 
 # Byte-compiled / optimized / DLL files
