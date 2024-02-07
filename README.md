@@ -71,10 +71,11 @@ python3 gv_experiments/training_scripts/train_ResAMR_classifier.py --experiment_
 
 To train a model for the single species-single drug comparison, we first pretrain a ResMLP model on the DRIAMS A dataset except for the samples corresponding to the target (species-drug) combination.
 
-For example, for the target combination ("Staphylococcus aureus", "Oxacillin"):
+For example, for the target combination ("Staphylococcus aureus", "Oxacillin"), to predict on the split number 0:
 
 ```
-python3 gv_experiments/training_scripts/pretrain_ResAMR_baseline_comparison.py --experiment_name "PretrainingResMLP" --experiment_group "ResAMR_SingleSpecies_SingleDrug" \
+python3 gv_experiments/training_scripts/pretrain_ResAMR_baseline_comparison.py \
+        --experiment_name "PretrainingResMLP" --experiment_group "ResAMR_SingleSpecies_SingleDrug" \
         --seed 42 --driams_long_table "processed_data/DRIAMS_combined_long_table.csv" --splits_file "data/AMR_baseline_splits_noHospitalHygene.json" \
         --spectra_matrix "data/DRIAMS-A/spectra_binned_6000_all.npy" --drugs_df "processed_data/drug_fingerprints.csv" \
         --n_epochs 100 --learning_rate 0.0003 --fingerprint_class "morgan_1024" \
@@ -86,7 +87,8 @@ The resulting model will be saved in the folder `/home/user/results_folder`. For
 For each drug-species combination, we have selected 5 test splits. The finetuning command for split `$split_idx` (which should be a value in [0 1 2 3 4]) is:
 
 ```
-python3 gv_experiments/training_scripts/finetune_ResAMR_baseline_comparison.py --experiment_name "FinetuningResMLP" --experiment_group "ResAMR_SingleSpecies_SingleDrug" \
+python3 gv_experiments/training_scripts/finetune_ResAMR_baseline_comparison.py \
+        --experiment_name "FinetuningResMLP" --experiment_group "ResAMR_SingleSpecies_SingleDrug" \
         --seed 42 --driams_long_table "processed_data/DRIAMS_combined_long_table.csv" --splits_file "data/AMR_baseline_splits_noHospitalHygene.json" \
         --spectra_matrix "data/DRIAMS-A/spectra_binned_6000_all.npy" --drugs_df "processed_data/drug_fingerprints.csv" \
         --workstations_mapping "data/workstations_mapping.json" \
@@ -95,3 +97,34 @@ python3 gv_experiments/training_scripts/finetune_ResAMR_baseline_comparison.py -
         --root_folder /fast/gvisona/AMR_Pred \
         --pretrained_checkpoints_folder /home/user/results_folder/outputs/ResAMR_SingleSpecies_SingleDrug/PretrainingResMLP/42/checkpoints
 ```
+
+
+
+
+The analogous scripts tagged `_filterSpectra` perform the pretraining and finetuning after removing the spectra present in the target split from the pretraining set. In this case, a separate model has to be pretrained for each split, rather than for each drug-species combination as before. The respective commands are
+
+
+```
+python3 gv_experiments/training_scripts/pretrain_ResAMR_baseline_comparison_filterSpectra.py \
+        --experiment_name "PretrainingResMLP_filterSpectra" --experiment_group "ResAMR_SingleSpecies_SingleDrug" \
+        --seed 42 --driams_long_table "processed_data/DRIAMS_combined_long_table.csv" --splits_file "data/AMR_baseline_splits_noHospitalHygene.json" \
+        --spectra_matrix "data/DRIAMS-A/spectra_binned_6000_all.npy" --drugs_df "processed_data/drug_fingerprints.csv" \
+        --n_epochs 100 --learning_rate 0.0003 --fingerprint_class "morgan_1024" \
+        --patience 50 --driams_dataset "A" --batch_size 128 --root_folder "/home/user/results_folder" \
+        --target_drug "Oxacillin" --target_species "Staphylococcus aureus" --split_idx 0
+```
+
+for the pretraining, and 
+
+```
+python3 gv_experiments/training_scripts/finetune_ResAMR_baseline_comparison_filterSpectra.py \
+        --experiment_name "FinetuningResMLP_filterSpectra" --experiment_group "ResAMR_SingleSpecies_SingleDrug" \
+        --seed 42 --driams_long_table "processed_data/DRIAMS_combined_long_table.csv" --splits_file "data/AMR_baseline_splits_noHospitalHygene.json" \
+        --spectra_matrix "data/DRIAMS-A/spectra_binned_6000_all.npy" --drugs_df "processed_data/drug_fingerprints.csv" \
+        --n_epochs 200 --learning_rate 0.0001 --fingerprint_class "morgan_1024" \
+        --patience 30 --driams_dataset "A" --batch_size 32 \
+        --root_folder /fast/gvisona/AMR_Pred \
+        --pretrained_checkpoints_folder /home/user/results_folder/outputs/ResAMR_SingleSpecies_SingleDrug/PretrainingResMLP_filterSpectra \
+        --target_drug "Oxacillin" --target_species "Staphylococcus aureus" --split_idx 0
+```
+
