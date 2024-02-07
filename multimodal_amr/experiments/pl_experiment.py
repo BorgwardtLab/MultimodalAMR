@@ -21,7 +21,6 @@ class Classifier_Experiment(pl.LightningModule):
         self.save_hyperparameters(ignore=['model'])
         self.config = config
         self.batch_size = config["batch_size"]
-        # self.model = AMR_Classifier(config)
         self.model = model
         self.loss_function = nn.BCEWithLogitsLoss()
         self.threshold = config.get("threshold", 0.5)
@@ -33,75 +32,50 @@ class Classifier_Experiment(pl.LightningModule):
             lr=self.config["learning_rate"],
             weight_decay=self.config["weight_decay"],
         )
-        # scheduler = CyclicLR(optimizer, base_lr=0.0001, max_lr=self.learning_rate, mode="triangular2", step_size_up=10, cycle_momentum=False)
-        # return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "interval": "step"}}
+
         return optimizer
 
     def _step(self, batch):
-        # species_idx, spectrum, fprint_tensor, response, dataset = batch
         response = batch[-2]
         logits = self.model(batch)
         loss = self.loss_function(logits.view(-1, 1), response.view(-1, 1))
-        # predictions = logits
         predictions = torch.sigmoid(logits)
-        # predicted_classes = (predictions >= self.threshold).int().cpu().numpy()
-        # response_classes = response.cpu().numpy()
-        # logs = {
-        #     "mcc": matthews_corrcoef(response_classes, predicted_classes),
-        #     "balanced_accuracy": balanced_accuracy_score(
-        #         response_classes, predicted_classes
-        #     ),
-        #     "f1": f1_score(response_classes, predicted_classes, zero_division=0),
-        #     "AUPRC": average_precision_score(
-        #         response_classes, logits.cpu().detach().numpy()
-        #     ),
-        #     "precision": precision_score(
-        #         response_classes, predicted_classes, zero_division=0
-        #     ),
-        #     "recall": recall_score(
-        #         response_classes, predicted_classes, zero_division=0
-        #     ),
-        # }
-        logs = {"dummy": 0}
+        predicted_classes = (predictions >= self.threshold).int().cpu().numpy()
+        response_classes = response.cpu().numpy()
+        logs = {"loss": loss}
         return loss, logs, predictions
 
     def training_step(self, batch, batch_idx):
         loss, logs, predictions = self._step(batch)
         self.log("train_loss", loss, on_step=False, on_epoch=True,
                  prog_bar=True, logger=True, batch_size=self.batch_size)
-        for k, v in logs.items():
-            self.log(
-                "train_" + k,
-                v,
-                on_step=False,
-                on_epoch=True,
-                batch_size=self.batch_size,
-            )
-        logs["loss"] = loss
+        # for k, v in logs.items():
+        #     self.log(
+        #         "train_" + k,
+        #         v,
+        #         on_step=False,
+        #         on_epoch=True,
+        #         batch_size=self.batch_size,
+        #     )
+        # logs["loss"] = loss
         return logs
 
     def validation_step(self, batch, batch_idx):
         loss, logs, predictions = self._step(batch)
         self.log("val_loss", loss, on_step=False, on_epoch=True,
                  prog_bar=True, logger=True, batch_size=self.batch_size)
-        for k, v in logs.items():
-            self.log(
-                "val_" + k, v, on_step=False, on_epoch=True, batch_size=self.batch_size
-            )
-        logs["loss"] = loss
+        # for k, v in logs.items():
+        #     self.log(
+        #         "val_" + k, v, on_step=False, on_epoch=True, batch_size=self.batch_size
+        #     )
+        # logs["loss"] = loss
         return logs
 
     def test_step(self, batch, batch_idx):
         response = batch[-2]
         loss, logs, predictions = self._step(batch)
-        # predictions = (predictions >= self.threshold).cpu().int().cpu().flatten().tolist()
         self.test_predictions.extend(predictions.cpu().flatten().tolist())
         self.log("test_loss", loss, on_step=False, on_epoch=True, batch_size=self.batch_size)
-        for k, v in logs.items():
-            self.log(
-                "test_" + k, v, on_step=False, on_epoch=True, batch_size=self.batch_size
-            )
-        logs["loss"] = loss
         return logs
 
 
@@ -123,45 +97,13 @@ class Classifier_Experiment_TestMetrics(pl.LightningModule):
             lr=self.config["learning_rate"],
             weight_decay=self.config["weight_decay"],
         )
-        # scheduler = CyclicLR(optimizer, base_lr=0.0001, max_lr=self.learning_rate, mode="triangular2", step_size_up=10, cycle_momentum=False)
-        # return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "interval": "step"}}
+
         return optimizer
 
     def _step(self, batch):
-        # species_idx, spectrum, fprint_tensor, response, dataset = batch
         response = batch[-2]
         logits = self.model(batch)
         loss = self.loss_function(logits.view(-1, 1), response.view(-1, 1))
-        # predictions = logits
-        predictions = torch.sigmoid(logits)
-        # predicted_classes = (predictions >= self.threshold).int().cpu().numpy()
-        # response_classes = response.cpu().numpy()
-        # logs = {
-        #     "mcc": matthews_corrcoef(response_classes, predicted_classes),
-        #     "balanced_accuracy": balanced_accuracy_score(
-        #         response_classes, predicted_classes
-        #     ),
-        #     "f1": f1_score(response_classes, predicted_classes, zero_division=0),
-        #     "AUPRC": average_precision_score(
-        #         response_classes, logits.cpu().detach().numpy()
-        #     ),
-        #     "precision": precision_score(
-        #         response_classes, predicted_classes, zero_division=0
-        #     ),
-        #     "recall": recall_score(
-        #         response_classes, predicted_classes, zero_division=0
-        #     ),
-        # }
-        logs = {"dummy": 0}
-        return loss, logs, predictions
-
-
-    def _test_step(self, batch):
-        # species_idx, spectrum, fprint_tensor, response, dataset = batch
-        response = batch[-2]
-        logits = self.model(batch)
-        loss = self.loss_function(logits.view(-1, 1), response.view(-1, 1))
-        # predictions = logits
         predictions = torch.sigmoid(logits)
         predicted_classes = (predictions >= self.threshold).int().cpu().numpy()
         response_classes = response.cpu().numpy()
@@ -181,7 +123,32 @@ class Classifier_Experiment_TestMetrics(pl.LightningModule):
                 response_classes, predicted_classes, zero_division=0
             ),
         }
-        # logs = {"dummy": 0}
+        return loss, logs, predictions
+
+
+    def _test_step(self, batch):
+        response = batch[-2]
+        logits = self.model(batch)
+        loss = self.loss_function(logits.view(-1, 1), response.view(-1, 1))
+        predictions = torch.sigmoid(logits)
+        predicted_classes = (predictions >= self.threshold).int().cpu().numpy()
+        response_classes = response.cpu().numpy()
+        logs = {
+            "mcc": matthews_corrcoef(response_classes, predicted_classes),
+            "balanced_accuracy": balanced_accuracy_score(
+                response_classes, predicted_classes
+            ),
+            "f1": f1_score(response_classes, predicted_classes, zero_division=0),
+            "AUPRC": average_precision_score(
+                response_classes, logits.cpu().detach().numpy()
+            ),
+            "precision": precision_score(
+                response_classes, predicted_classes, zero_division=0
+            ),
+            "recall": recall_score(
+                response_classes, predicted_classes, zero_division=0
+            ),
+        }
         return loss, logs, predictions
 
     def training_step(self, batch, batch_idx):

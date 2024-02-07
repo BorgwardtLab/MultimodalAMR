@@ -32,12 +32,65 @@ The ResMLP model includes two projections layers that bring the representations 
 
 ![siamese network](images/ResMLP.png "Architecture of the ResMLP model")
 
+### Environment Setup
+
+To train ResMLP classifier models with the same setup presented in the paper, we recommend the creation of a suitable Python 3.9 eniromnent with the tool of your choice (e.g. Conda or virtualenv). An example with Conda:
+
+```
+conda create -n multimodalAMR python=3.9
+conda activate multimodalAMR
+```
+
+Clone the repository, and from within the MultimodalAMR folder, nstall the necessary dependencies listed in the requirements.txt file
+
+```
+pip install -r requirements.txt
+```
+
+Install the multimodal_amr package to access the necessary utilities (from within the MultimodalAMR directory)
+```
+pip install .
+```
+
+### Preprocessing the data
+
+Download the original files from Dryad, at [https://datadryad.org/stash/dataset/doi:10.5061/dryad.bzkh1899q](https://datadryad.org/stash/dataset/doi:10.5061/dryad.bzkh1899q).
+Use the `data/Process Driams data.ipynb` notebook to obtain the preprocessed files containing the MALDI-TOF spectra.
+
+
+
+### Training a ResMLP model
+
 To train a ResMLP classifier model with the same configuration as the one presented in the paper, the command used is:
 
 ```
-cd gv_experiments
-
-python3 training_scripts/train_ResAMR_classifier.py --experiment_name "myExperiment" --experiment_group "ResMLP" --driams_dataset "B" --seed 0 --split_type "random" --driams_long_table "../processed_data/DRIAMS_combined_long_table.csv"  --drugs_df "../processed_data/drug_fingerprints.csv" --spectra_matrix "../data/DRIAMS-B/spectra_binned_6000_2018.npy" --n_epochs 500 --learning_rate 0.0003 --drug_emb_type "fingerprint" --fingerprint_class "morgan_1024" --fingerprint_size 1024 --patience 50 --batch_size 128
+python3 gv_experiments/training_scripts/train_ResAMR_classifier.py --experiment_name "myExperiment" --experiment_group "ResMLP" --driams_dataset "B" --seed 0 --split_type "random" --driams_long_table "processed_data/DRIAMS_combined_long_table.csv"  --drugs_df "processed_data/drug_fingerprints.csv" --spectra_matrix "data/DRIAMS-B/spectra_binned_6000_2018.npy" --n_epochs 500 --learning_rate 0.0003 --drug_emb_type "fingerprint" --fingerprint_class "morgan_1024" --fingerprint_size 1024 --patience 50 --batch_size 128
 ```
 
-The necessary files to run the script (the matrices of the processed spectra) are available on request.
+### Train a ResMLP model for the single species-single drug comparison
+
+To train a model for the single species-single drug comparison, we first pretrain a ResMLP model on the DRIAMS A dataset except for the samples corresponding to the target (species-drug) combination.
+
+For example, for the target combination ("Staphylococcus aureus", "Oxacillin"):
+
+```
+python3 gv_experiments/training_scripts/pretrain_ResAMR_baseline_comparison.py --experiment_name "PretrainingResMLP" --experiment_group "ResAMR_SingleSpecies_SingleDrug" \
+        --seed 42 --driams_long_table "processed_data/DRIAMS_combined_long_table.csv" --splits_file "data/AMR_baseline_splits_noHospitalHygene.json" \
+        --spectra_matrix "data/DRIAMS-A/spectra_binned_6000_all.npy" --drugs_df "processed_data/drug_fingerprints.csv" \
+        --n_epochs 100 --learning_rate 0.0003 --fingerprint_class "morgan_1024" \
+        --patience 50 --driams_dataset "A" --batch_size 128 --combination_idx 7 --root_folder "/home/user/results_folder"
+```
+
+The resulting model will be saved in the folder `/home/user/results_folder`. For the finetuning, we load the target splits, and tune the model on the target combination data not included in the target split.
+For each drug-species combination, we have selected 5 test splits. The finetuning command for split `$split_idx` is:
+
+```
+python3 gv_experiments/training_scripts/finetune_ResAMR_baseline_comparison.py --experiment_name "FinetuningResMLP" --experiment_group "ResAMR_SingleSpecies_SingleDrug" \
+        --seed 42 --driams_long_table "processed_data/DRIAMS_combined_long_table.csv" --splits_file "data/AMR_baseline_splits_noHospitalHygene.json" \
+        --spectra_matrix "data/DRIAMS-A/spectra_binned_6000_all.npy" --drugs_df "processed_data/drug_fingerprints.csv" \
+        --workstations_mapping "data/workstations_mapping.json" \
+        --n_epochs 100 --learning_rate 0.0001 --fingerprint_class "morgan_1024" \
+        --patience 30 --driams_dataset "A" --batch_size 32 --training_setup $1 \
+        --root_folder /fast/gvisona/AMR_Pred \
+        --pretrained_checkpoints_folder /home/user/results_folder/outputs/ResAMR_SingleSpecies_SingleDrug/PretrainingResMLP/42/checkpoints
+```
