@@ -9,8 +9,8 @@ import pandas as pd
 from tqdm import tqdm
 from argparse import ArgumentParser
 import json
-from data_split.data_utils import DataSplitter
-from models.data_loaders import DrugResistanceDataset_Fingerprints
+from multimodal_amr.data_split.data_utils import DataSplitter
+from multimodal_amr.models.data_loaders import DrugResistanceDataset_Fingerprints
 from sklearn.metrics import matthews_corrcoef, accuracy_score, balanced_accuracy_score, f1_score, average_precision_score
 from sklearn.metrics import precision_score, recall_score
 import json
@@ -186,12 +186,9 @@ if __name__=="__main__":
     parser.add_argument("--seed", type=int, default=0)
 
     parser.add_argument("--driams_dataset", type=str, choices=['A', 'B', 'C', 'D'], default="B")
-    parser.add_argument("--driams_long_table", type=str,
-                        default="../processed_data/DRIAMS_combined_long_table.csv")
-    parser.add_argument("--spectra_matrix", type=str,
-                        default="../data/DRIAMS-B/spectra_binned_6000_2018.npy")
-    parser.add_argument("--drugs_df", type=str,
-                        default="../processed_data/drug_fingerprints.csv")
+    parser.add_argument("--driams_long_table", type=str)
+    parser.add_argument("--spectra_matrix", type=str)
+    parser.add_argument("--drugs_df", type=str)
     parser.add_argument("--split_type", type=str, default="random", choices=["random", "drug_species_zero_shot", "drugs_zero_shot"])
 
     parser.add_argument("--fingerprint_class", type=str, default="MACCS", choices=["all", "MACCS", "morgan_512", "morgan_1024", "pubchem"])
