@@ -128,3 +128,7 @@ python3 gv_experiments/training_scripts/finetune_ResAMR_baseline_comparison_filt
         --target_drug "Oxacillin" --target_species "Staphylococcus aureus" --split_idx 0
 ```
 
+
+## Funding
+
+This project has received funding from the European Union's Framework Programme for Research and Innovation Horizon 2020 (2014-2020) under the Marie Skłodowska-Curie Grant Agreement No. 813533-MSCA-ITN-2018.
